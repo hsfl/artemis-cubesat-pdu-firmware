@@ -60,6 +60,7 @@
 #include <ctype.h>
 #include "configuration.h"
 #include "system/fs/sys_fs.h"
+#include "version.h"
 
 // DOM-IGNORE-BEGIN
 #ifdef __cplusplus  // Provide C++ Compatibility
@@ -152,6 +153,9 @@ typedef struct
     APP_STATES                  state;           
 
     int32_t                     nBytesRead;
+
+    /* Version information */
+    const VERSION_INFO*         version;
 } APP_DATA;
 
 
