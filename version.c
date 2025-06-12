@@ -2,7 +2,7 @@
   Version Information Implementation File
 
   Company:
-    Artemis Cubesat PDU
+    Artemis Cubesat PDU: HSFL - Dennis Sarsozo
 
   File Name:
     version.c

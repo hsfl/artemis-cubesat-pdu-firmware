@@ -2,7 +2,7 @@
   Version Information Header File
 
   Company:
-    HSFL - Dennis Sarsozo
+    Artemis Cubesat PDU: HSFL - Dennis Sarsozo
 
   File Name:
     version.h
