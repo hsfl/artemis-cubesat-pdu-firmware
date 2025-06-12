@@ -74,6 +74,7 @@ char APP_INIT_MSG[] = "\r\nAPP INITIALIZED\r\n";
 char SD_MOUNT_FAIL[] = "SD MOUNT FAIL\r\n";
 char SD_SUCCESS_MSG[] = "SD SUCCESS\r\n";
 char SD_FAILED_MSG[] = "SD FAIL\r\n";
+char VERSION_MSG[] = "Firmware Version: " VERSION_STRING "\r\n";
 
 // USART Definitions
 // *****************************************************************************
@@ -106,7 +107,8 @@ FIL Fil;		/* File object needed for each open file */
 
 void APP_Initialize ( void )
 {
-//    SERCOM3_USART_Write(&APP_INIT_MSG[0], sizeof(APP_INIT_MSG));
+    /* Initialize version information */
+    SERCOM3_USART_Write(&VERSION_MSG[0], sizeof(VERSION_MSG));
     disableGPIOs();
     RTC_Initialize();
     RTC_Timer32Start();
