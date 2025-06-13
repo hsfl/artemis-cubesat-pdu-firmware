@@ -51,6 +51,7 @@
 #include <stdbool.h>                    // Defines true
 #include <stdlib.h>                     // Defines EXIT_FAILURE
 #include "definitions.h"                // SYS function prototypes
+#include "version.h"                    // Version information
 
 // *****************************************************************************
 // *****************************************************************************
@@ -60,7 +61,13 @@
 
 int main ( void )
 {
+    // Initialize the system
     SYS_Initialize(NULL);
+
+    // Print version information (if debug UART is available)
+    #ifdef DEBUG_UART
+    printf("Artemis PDU Firmware %s\n", VERSION_INFO);
+    #endif
 
     while ( true )
     {
