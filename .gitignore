@@ -1,6 +1,7 @@
 # MPLAB X build output
 dist/
 build/
+.generated_files/
 
 # MPLAB X project-specific temporary files
 nbproject/Makefile-*
@@ -28,3 +29,5 @@ nbproject/private/
 *.dis
 *.as
 *.bin
+ArtemisPDU.X/nbproject/Makefile-default.mk
+ArtemisPDU.X/nbproject/Makefile-genesis.properties
