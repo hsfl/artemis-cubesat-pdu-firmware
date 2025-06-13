@@ -1,0 +1,30 @@
+# MPLAB X build output
+dist/
+build/
+
+# MPLAB X project-specific temporary files
+nbproject/Makefile-*
+nbproject/private/
+
+# IDE config and cache
+*.orig
+*.swp
+*.swo
+.DS_Store
+*.bak
+*~
+
+# XC compilers/intermediate outputs (optional)
+*.o
+*.d
+*.hex
+*.elf
+*.map
+*.p1
+*.sym
+*.lst
+
+# Debugger artifacts (optional)
+*.dis
+*.as
+*.bin
