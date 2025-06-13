@@ -1,4 +1,0 @@
-
-[submodule "Teensy/keao_fsw/lib/micro-cosmos"]
-	path = Teensy/keao_fsw/lib/micro-cosmos
-	url = https://github.com/hsfl/micro-cosmos.git
