@@ -53,7 +53,6 @@
 #include "configuration.h"
 #include "definitions.h"
 #include "sys_tasks.h"
-#include "plib_wdt.h"          // WDT_Clear()
 
 
 // *****************************************************************************
