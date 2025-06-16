@@ -1,6 +1,7 @@
 # MPLAB X build output
 dist/
 build/
+.generated_files/
 
 # MPLAB X project-specific temporary files
 nbproject/Makefile-*
