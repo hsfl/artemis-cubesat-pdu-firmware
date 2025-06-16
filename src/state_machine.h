@@ -6,6 +6,11 @@
  * - OFF: Initial state, minimal power consumption
  * - INIT: System initialization and self-test
  * - SAFE: Normal operation with all safety checks active
+ * - STANDBY: Low-power mode with minimal functionality
+ * - NOMINAL: Full operational mode
+ * - EMERGENCY: Emergency power management mode
+ * - DIAGNOSTIC: System diagnostic mode
+ * - SHUTDOWN: Controlled shutdown sequence
  * 
  * Usage:
  * 1. Create a state machine instance:
@@ -56,11 +61,21 @@
  * OFF: Initial state, minimal power consumption
  * INIT: System initialization and self-test
  * SAFE: Normal operation with all safety checks active
+ * STANDBY: Low-power mode with minimal functionality
+ * NOMINAL: Full operational mode
+ * EMERGENCY: Emergency power management mode
+ * DIAGNOSTIC: System diagnostic mode
+ * SHUTDOWN: Controlled shutdown sequence
  */
 typedef enum {
     PDU_STATE_OFF = 0,    ///< Initial state, minimal power consumption
     PDU_STATE_INIT,       ///< System initialization and self-test
     PDU_STATE_SAFE,       ///< Normal operation with all safety checks active
+    PDU_STATE_STANDBY,    ///< Low-power mode with minimal functionality
+    PDU_STATE_NOMINAL,    ///< Full operational mode
+    PDU_STATE_EMERGENCY,  ///< Emergency power management mode
+    PDU_STATE_DIAGNOSTIC, ///< System diagnostic mode
+    PDU_STATE_SHUTDOWN,   ///< Controlled shutdown sequence
     PDU_STATE_COUNT       ///< Number of states (for bounds checking)
 } pdu_state_t;
 

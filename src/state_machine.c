@@ -66,6 +66,11 @@ typedef struct {
 static void state_off_entry(pdu_state_machine_t *sm);
 static void state_init_entry(pdu_state_machine_t *sm);
 static void state_safe_entry(pdu_state_machine_t *sm);
+static void state_standby_entry(pdu_state_machine_t *sm);
+static void state_nominal_entry(pdu_state_machine_t *sm);
+static void state_emergency_entry(pdu_state_machine_t *sm);
+static void state_diagnostic_entry(pdu_state_machine_t *sm);
+static void state_shutdown_entry(pdu_state_machine_t *sm);
 
 /**
  * @brief State transition table
@@ -99,6 +104,26 @@ static const state_transition_t state_transitions[PDU_STATE_COUNT][PDU_EVENT_COU
         [PDU_EVENT_INIT_COMPLETE] = {PDU_STATE_SAFE, NULL},
         [PDU_EVENT_ERROR] = {PDU_STATE_OFF, state_off_entry},
         [PDU_EVENT_POWER_OFF] = {PDU_STATE_OFF, state_off_entry},
+    },
+    /* PDU_STATE_STANDBY */
+    [PDU_STATE_STANDBY] = {
+        /* TODO: implement transitions from STANDBY */
+    },
+    /* PDU_STATE_NOMINAL */
+    [PDU_STATE_NOMINAL] = {
+        /* TODO: implement transitions from NOMINAL */
+    },
+    /* PDU_STATE_EMERGENCY */
+    [PDU_STATE_EMERGENCY] = {
+        /* TODO: implement transitions from EMERGENCY */
+    },
+    /* PDU_STATE_DIAGNOSTIC */
+    [PDU_STATE_DIAGNOSTIC] = {
+        /* TODO: implement transitions from DIAGNOSTIC */
+    },
+    /* PDU_STATE_SHUTDOWN */
+    [PDU_STATE_SHUTDOWN] = {
+        /* TODO: implement transitions from SHUTDOWN */
     },
 };
 
@@ -150,6 +175,71 @@ static void state_safe_entry(pdu_state_machine_t *sm)
 {
     PDU_STATE_TRACE(PDU_STATE_SAFE);
     /* Add SAFE state entry actions here */
+}
+
+/**
+ * @brief STANDBY state entry action
+ * 
+ * Called when entering the STANDBY state. Performs:
+ * - State transition tracing
+ * - Low-power mode initialization
+ */
+static void state_standby_entry(pdu_state_machine_t *sm)
+{
+    PDU_STATE_TRACE(PDU_STATE_STANDBY);
+    /* TODO: add STANDBY state entry actions */
+}
+
+/**
+ * @brief NOMINAL state entry action
+ * 
+ * Called when entering the NOMINAL state. Performs:
+ * - State transition tracing
+ * - Full operation initialization
+ */
+static void state_nominal_entry(pdu_state_machine_t *sm)
+{
+    PDU_STATE_TRACE(PDU_STATE_NOMINAL);
+    /* TODO: add NOMINAL state entry actions */
+}
+
+/**
+ * @brief EMERGENCY state entry action
+ * 
+ * Called when entering the EMERGENCY state. Performs:
+ * - State transition tracing
+ * - Emergency power management initialization
+ */
+static void state_emergency_entry(pdu_state_machine_t *sm)
+{
+    PDU_STATE_TRACE(PDU_STATE_EMERGENCY);
+    /* TODO: add EMERGENCY state entry actions */
+}
+
+/**
+ * @brief DIAGNOSTIC state entry action
+ * 
+ * Called when entering the DIAGNOSTIC state. Performs:
+ * - State transition tracing
+ * - Diagnostic mode initialization
+ */
+static void state_diagnostic_entry(pdu_state_machine_t *sm)
+{
+    PDU_STATE_TRACE(PDU_STATE_DIAGNOSTIC);
+    /* TODO: add DIAGNOSTIC state entry actions */
+}
+
+/**
+ * @brief SHUTDOWN state entry action
+ * 
+ * Called when entering the SHUTDOWN state. Performs:
+ * - State transition tracing
+ * - Controlled shutdown sequence
+ */
+static void state_shutdown_entry(pdu_state_machine_t *sm)
+{
+    PDU_STATE_TRACE(PDU_STATE_SHUTDOWN);
+    /* TODO: add SHUTDOWN state entry actions */
 }
 
 /**
