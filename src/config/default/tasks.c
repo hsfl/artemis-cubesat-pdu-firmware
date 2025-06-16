@@ -53,6 +53,7 @@
 #include "configuration.h"
 #include "definitions.h"
 #include "sys_tasks.h"
+#include "plib_wdt.h"          // WDT_Clear()
 
 
 // *****************************************************************************
@@ -60,6 +61,31 @@
 // Section: RTOS "Tasks" Routine
 // *****************************************************************************
 // *****************************************************************************
+
+/* -------- constants -------------------------------------------------- */
+#define WATCHDOG_PERIOD_MS   500     // 0.5-s edges (well inside 10-s MAX16998 window)
+
+static void lWatchdogTask(void *pvParameters)
+{
+    bool wdiLevel = false;
+
+    while(true)
+    {
+        /* 1. clear internal SAME51 watchdog */
+        WDT_Clear();
+
+        /* 2. toggle external MAX16998 WDI pin */
+        if (wdiLevel)
+            WDT_WDI_Clear();
+        else
+            WDT_WDI_Set();
+        wdiLevel = !wdiLevel;
+
+        /* 3. sleep exactly WATCHDOG_PERIOD_MS */
+        vTaskDelay(pdMS_TO_TICKS(WATCHDOG_PERIOD_MS));
+    }
+}
+
 static void lDRV_SDSPI_0_Tasks(  void *pvParameters  )
 {
     while(true)
@@ -122,18 +148,37 @@ void SYS_Tasks ( void )
         (TaskHandle_t*)NULL
     );
 
-
+    /* Create watchdog task
+     * This task maintains two watchdogs:
+     * 1. Internal SAME51 watchdog (16s timeout)
+     * 
+     * The task runs every 500ms to:
+     * - Clear the internal watchdog timer
+     * - Toggle the WDI pin for the external watchdog
+     * 
+     * If this task fails to run:
+     * - Internal watchdog will reset the MCU after ~16s
+     * 
+     * Priority is set just above idle to ensure it runs even
+     * when the system is idle, but doesn't interfere with
+     * higher priority tasks.
+     */
+    (void) xTaskCreate( lWatchdogTask,
+        "WDT",
+        configMINIMAL_STACK_SIZE,
+        NULL,
+        tskIDLE_PRIORITY + 1,
+        NULL
+    );
 
     /* Maintain Device Drivers */
-        (void) xTaskCreate( lDRV_SDSPI_0_Tasks,
+    (void) xTaskCreate( lDRV_SDSPI_0_Tasks,
         "DRV_SD_0_TASKS",
         DRV_SDSPI_STACK_SIZE_IDX0,
         (void*)NULL,
         DRV_SDSPI_PRIORITY_IDX0 ,
         (TaskHandle_t*)NULL
     );
-
-
 
     /* Maintain Middleware & Other Libraries */
     
@@ -149,15 +194,12 @@ void SYS_Tasks ( void )
            1U ,
            &xAPP_Tasks);
 
-
-
     /* Start RTOS Scheduler. */
     
      /**********************************************************************
      * Create all Threads for APP Tasks before starting FreeRTOS Scheduler *
      ***********************************************************************/
     vTaskStartScheduler(); /* This function never returns. */
-
 }
 
 /*******************************************************************************
