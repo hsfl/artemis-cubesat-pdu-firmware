@@ -9,7 +9,7 @@
  * - STANDBY: Low-power mode with minimal functionality
  * - NOMINAL: Full operational mode
  * - EMERGENCY: Emergency power management mode
- * - DIAGNOSTIC: System diagnostic mode
+ * - DIAGNOSTIC: System diagnostic mode TODO
  * - SHUTDOWN: Controlled shutdown sequence
  * 
  * Usage:

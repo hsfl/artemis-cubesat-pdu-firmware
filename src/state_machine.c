@@ -69,7 +69,7 @@ static void state_safe_entry(pdu_state_machine_t *sm);
 static void state_standby_entry(pdu_state_machine_t *sm);
 static void state_nominal_entry(pdu_state_machine_t *sm);
 static void state_emergency_entry(pdu_state_machine_t *sm);
-static void state_diagnostic_entry(pdu_state_machine_t *sm);
+//static void state_diagnostic_entry(pdu_state_machine_t *sm); // TODO: add DIAGNOSTIC state entry actions when it'll be used - maybe mission ops command/obc?
 static void state_shutdown_entry(pdu_state_machine_t *sm);
 
 /**
@@ -140,7 +140,7 @@ static const state_transition_t state_transitions[PDU_STATE_COUNT][PDU_EVENT_COU
     },
     /* PDU_STATE_SAFE */
     [PDU_STATE_SAFE] = {
-        [PDU_EVENT_POWER_ON] = {PDU_STATE_SAFE, NULL},
+        [PDU_EVENT_POWER_ON] = {PDU_STATE_STANDBY, state_standby_entry},
         [PDU_EVENT_INIT_COMPLETE] = {PDU_STATE_SAFE, NULL},
         [PDU_EVENT_ERROR] = {PDU_STATE_OFF, state_off_entry},
         [PDU_EVENT_POWER_OFF] = {PDU_STATE_OFF, state_off_entry},
@@ -166,7 +166,7 @@ static const state_transition_t state_transitions[PDU_STATE_COUNT][PDU_EVENT_COU
         [PDU_EVENT_ERROR] = {PDU_STATE_SAFE, state_safe_entry},
         [PDU_EVENT_POWER_OFF] = {PDU_STATE_SHUTDOWN, state_shutdown_entry},
     },
-    /* PDU_STATE_DIAGNOSTIC */
+    /* PDU_STATE_DIAGNOSTIC - TODO only allow transition if its a user command?*/
     [PDU_STATE_DIAGNOSTIC] = {
         [PDU_EVENT_POWER_ON] = {PDU_STATE_DIAGNOSTIC, NULL},
         [PDU_EVENT_INIT_COMPLETE] = {PDU_STATE_SAFE, state_safe_entry},
@@ -278,11 +278,12 @@ static void state_emergency_entry(pdu_state_machine_t *sm)
  * - State transition tracing
  * - Diagnostic mode initialization
  */
-static void state_diagnostic_entry(pdu_state_machine_t *sm)
-{
-    PDU_STATE_TRACE(PDU_STATE_DIAGNOSTIC);
-    /* TODO: add DIAGNOSTIC state entry actions */
-}
+// static void state_diagnostic_entry(pdu_state_machine_t *sm)
+// {
+//     TODO: add DIAGNOSTIC state entry actions when it'll be used - maybe mission ops command/obc?
+//     PDU_STATE_TRACE(PDU_STATE_DIAGNOSTIC);
+//     /* TODO: add DIAGNOSTIC state entry actions */
+// }
 
 /**
  * @brief SHUTDOWN state entry action
