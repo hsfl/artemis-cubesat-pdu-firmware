@@ -54,6 +54,7 @@
 
 #include "state_machine.h"
 #include <string.h>
+#include "boot_record.h"
 
 /* State transition table type */
 typedef struct {
@@ -126,6 +127,14 @@ static void state_off_entry(pdu_state_machine_t *sm)
 static void state_init_entry(pdu_state_machine_t *sm)
 {
     PDU_STATE_TRACE(PDU_STATE_INIT);
+    Bootrec_Init();
+    extern bootrec_t mirror; // defined in boot_record.c
+    if (mirror.safe_latch) {
+        // Immediately transition to SAFE state if latch is set
+        sm->current_state = PDU_STATE_SAFE;
+        state_safe_entry(sm);
+        return;
+    }
     /* Add INIT state entry actions here */
 }
 
