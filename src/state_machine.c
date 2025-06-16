@@ -78,10 +78,50 @@ static void state_shutdown_entry(pdu_state_machine_t *sm);
  * Defines all possible state transitions and their associated actions.
  * Table is indexed by [current_state][event].
  * 
- * Transition Rules:
- * - OFF state: Only POWER_ON can transition to INIT
- * - INIT state: INIT_COMPLETE goes to SAFE, errors go to OFF
- * - SAFE state: Errors and POWER_OFF go to OFF
+ * State Transition Rules:
+ * 
+ * OFF State:
+ * - POWER_ON → INIT: Initial system startup
+ * - All other events maintain OFF state
+ * 
+ * INIT State:
+ * - INIT_COMPLETE → SAFE: Successful initialization
+ * - ERROR/POWER_OFF → OFF: Abort initialization
+ * 
+ * SAFE State:
+ * - All events maintain SAFE state except:
+ * - ERROR/POWER_OFF → OFF: System shutdown
+ * 
+ * STANDBY State:
+ * - POWER_ON → NOMINAL: Resume normal operation
+ * - ERROR → SAFE: Fallback to safe mode
+ * - POWER_OFF → SHUTDOWN: Controlled shutdown
+ * 
+ * NOMINAL State:
+ * - ERROR → EMERGENCY: Critical error handling
+ * - POWER_OFF → SHUTDOWN: Controlled shutdown
+ * - Other events maintain NOMINAL state
+ * 
+ * EMERGENCY State:
+ * - ERROR → SAFE: Fallback to safe mode
+ * - POWER_OFF → SHUTDOWN: Controlled shutdown
+ * - Other events maintain EMERGENCY state
+ * 
+ * DIAGNOSTIC State:
+ * - INIT_COMPLETE → SAFE: Return to safe mode
+ * - ERROR → EMERGENCY: Escalate to emergency
+ * - POWER_OFF → SHUTDOWN: Controlled shutdown
+ * - Other events maintain DIAGNOSTIC state
+ * 
+ * SHUTDOWN State:
+ * - ERROR/POWER_OFF → OFF: Complete shutdown
+ * - Other events maintain SHUTDOWN state
+ * 
+ * General Rules:
+ * 1. Error conditions generally lead to safer states
+ * 2. Power-off requests follow controlled shutdown sequence
+ * 3. State entry actions are called after transitions
+ * 4. NULL entry actions indicate no special handling needed
  */
 static const state_transition_t state_transitions[PDU_STATE_COUNT][PDU_EVENT_COUNT] = {
     /* PDU_STATE_OFF */
@@ -107,23 +147,38 @@ static const state_transition_t state_transitions[PDU_STATE_COUNT][PDU_EVENT_COU
     },
     /* PDU_STATE_STANDBY */
     [PDU_STATE_STANDBY] = {
-        /* TODO: implement transitions from STANDBY */
+        [PDU_EVENT_POWER_ON] = {PDU_STATE_NOMINAL, state_nominal_entry},
+        [PDU_EVENT_INIT_COMPLETE] = {PDU_STATE_STANDBY, NULL},
+        [PDU_EVENT_ERROR] = {PDU_STATE_SAFE, state_safe_entry},
+        [PDU_EVENT_POWER_OFF] = {PDU_STATE_SHUTDOWN, state_shutdown_entry},
     },
     /* PDU_STATE_NOMINAL */
     [PDU_STATE_NOMINAL] = {
-        /* TODO: implement transitions from NOMINAL */
+        [PDU_EVENT_POWER_ON] = {PDU_STATE_NOMINAL, NULL},
+        [PDU_EVENT_INIT_COMPLETE] = {PDU_STATE_NOMINAL, NULL},
+        [PDU_EVENT_ERROR] = {PDU_STATE_EMERGENCY, state_emergency_entry},
+        [PDU_EVENT_POWER_OFF] = {PDU_STATE_SHUTDOWN, state_shutdown_entry},
     },
     /* PDU_STATE_EMERGENCY */
     [PDU_STATE_EMERGENCY] = {
-        /* TODO: implement transitions from EMERGENCY */
+        [PDU_EVENT_POWER_ON] = {PDU_STATE_EMERGENCY, NULL},
+        [PDU_EVENT_INIT_COMPLETE] = {PDU_STATE_EMERGENCY, NULL},
+        [PDU_EVENT_ERROR] = {PDU_STATE_SAFE, state_safe_entry},
+        [PDU_EVENT_POWER_OFF] = {PDU_STATE_SHUTDOWN, state_shutdown_entry},
     },
     /* PDU_STATE_DIAGNOSTIC */
     [PDU_STATE_DIAGNOSTIC] = {
-        /* TODO: implement transitions from DIAGNOSTIC */
+        [PDU_EVENT_POWER_ON] = {PDU_STATE_DIAGNOSTIC, NULL},
+        [PDU_EVENT_INIT_COMPLETE] = {PDU_STATE_SAFE, state_safe_entry},
+        [PDU_EVENT_ERROR] = {PDU_STATE_EMERGENCY, state_emergency_entry},
+        [PDU_EVENT_POWER_OFF] = {PDU_STATE_SHUTDOWN, state_shutdown_entry},
     },
     /* PDU_STATE_SHUTDOWN */
     [PDU_STATE_SHUTDOWN] = {
-        /* TODO: implement transitions from SHUTDOWN */
+        [PDU_EVENT_POWER_ON] = {PDU_STATE_SHUTDOWN, NULL},
+        [PDU_EVENT_INIT_COMPLETE] = {PDU_STATE_SHUTDOWN, NULL},
+        [PDU_EVENT_ERROR] = {PDU_STATE_OFF, state_off_entry},
+        [PDU_EVENT_POWER_OFF] = {PDU_STATE_OFF, state_off_entry},
     },
 };
 
