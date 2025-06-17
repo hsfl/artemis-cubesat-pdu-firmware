@@ -16,7 +16,7 @@ void decode_pdu_packet(const char *input)
             packet.sw += PDU_CMD_OFFSET;
             packet.sw_state += PDU_CMD_OFFSET;
             memcpy(reply, &packet, sizeof(struct pdu_packet));
-            SERCOM3_USART_Write(&reply[0], sizeof(reply));
+            SERCOM3_USART_Write(&reply[0], sizeof(struct pdu_packet));
             SERCOM3_USART_Write("\r\n", 2);
             break;
         case CommandSetSwitch:
@@ -253,7 +253,7 @@ void decode_pdu_packet(const char *input)
             packet.sw += PDU_CMD_OFFSET;
             packet.sw_state += PDU_CMD_OFFSET;
             memcpy(reply, &packet, sizeof(struct pdu_packet));
-            SERCOM3_USART_Write(&reply[0], sizeof(reply));
+            SERCOM3_USART_Write(&reply[0], sizeof(struct pdu_packet));
             SERCOM3_USART_Write("\r\n", 2);
             break;
         default:
