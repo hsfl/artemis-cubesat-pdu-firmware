@@ -31,12 +31,11 @@ enum PDU_SW
     SW_5V_4,
     SW_12V,
     VBATT,
-    WDT,
     HBRIDGE1,
     HBRIDGE2,
     BURN,
     BURN1,
-    BURN2,
+    BURN2
 };
 typedef uint8_t PDU_SW;
 

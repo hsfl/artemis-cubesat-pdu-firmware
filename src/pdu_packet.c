@@ -52,9 +52,6 @@ void decode_pdu_packet(const char *input)
                     case VBATT:
                         SW_VBATT_EN_Set();
                         break;
-                    case WDT:
-                        WDT_WDI_Set();
-                        break;
                     case HBRIDGE1:
                         FAULT1_Set();
                         IN1_Set();
@@ -120,9 +117,6 @@ void decode_pdu_packet(const char *input)
                         break;
                     case VBATT:
                         SW_VBATT_EN_Clear();
-                        break;
-                    case WDT:
-                        WDT_WDI_Clear();
                         break;
                     case HBRIDGE1:
                         FAULT1_Clear();
@@ -271,7 +265,6 @@ void enableAllGPIOs(void) {
     SW_5V_EN3_Set();
     SW_5V_EN4_Set();
     SW_VBATT_EN_Set();
-//    WDT_WDI_Set();
     BURN1_EN_Set();
     IN1_Set();
     IN2_Set();
@@ -300,7 +293,6 @@ void disableAllGPIOs(void) {
     SW_5V_EN3_Clear();
     SW_5V_EN4_Clear();
     SW_VBATT_EN_Clear();
-//    WDT_WDI_Clear();
     BURN1_EN_Clear();
     IN1_Clear();
     IN2_Clear();
