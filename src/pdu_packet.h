@@ -14,33 +14,33 @@
 
 enum PDU_Type
 {
-    NOP,
-    CommandPing,
-    CommandSetSwitch,
-    CommandGetSwitchStatus,
-    DataPong,
-    DataSwitchStatus,
-    DataSwitchTelem,
+    PDU_TYPE_NOP,
+    PDU_TYPE_COMMAND_PING,
+    PDU_TYPE_COMMAND_SET_SWITCH,
+    PDU_TYPE_COMMAND_GET_SWITCH_STATUS,
+    PDU_TYPE_DATA_PONG,
+    PDU_TYPE_DATA_SWITCH_STATUS,
+    PDU_TYPE_DATA_SWITCH_TELEM,
 };
 typedef uint8_t PDU_Type;
 
 enum PDU_SW
 {
-    None,
-    All,
-    SW_3V3_1,
-    SW_3V3_2,
-    SW_5V_1,
-    SW_5V_2,
-    SW_5V_3,
-    SW_5V_4,
-    SW_12V,
-    VBATT,
-    HBRIDGE1,
-    HBRIDGE2,
-    BURN,
-    BURN1,
-    BURN2
+    PDU_SW_NONE,
+    PDU_SW_ALL,
+    PDU_SW_3V3_1,
+    PDU_SW_3V3_2,
+    PDU_SW_5V_1,
+    PDU_SW_5V_2,
+    PDU_SW_5V_3,
+    PDU_SW_5V_4,
+    PDU_SW_12V,
+    PDU_SW_VBATT,
+    PDU_SW_HBRIDGE1,
+    PDU_SW_HBRIDGE2,
+    PDU_SW_BURN,
+    PDU_SW_BURN1,
+    PDU_SW_BURN2
 };
 typedef uint8_t PDU_SW;
 
