@@ -3,6 +3,11 @@
 
 void decode_pdu_packet(const char *input)
 {
+    // Return early if input is too short (need at least 3 bytes)
+    if (!input || !input[0] || !input[1] || !input[2]) {
+        return;
+    }
+
     static uint8_t tx_buf[PDU_MAX_PACKET_SIZE]; // Large enough for both pdu_packet (3B) and pdu_telem (13B)
     struct pdu_packet packet;
     packet.type = input[0] - PDU_CMD_OFFSET;
