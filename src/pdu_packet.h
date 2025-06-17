@@ -5,7 +5,7 @@
 #include "stdint.h"
 
 #define PDU_CMD_OFFSET 48
-#define PDU_MAX_PACKET_SIZE 13  // Size of largest packet (pdu_telem: 1B type + 12B sw_state)
+#define PDU_MAX_PACKET_SIZE 16  // Size of largest packet (pdu_telem: 1B type + 15B sw_state)
 
 enum PDU_Type
 {
@@ -49,7 +49,7 @@ struct __attribute__((packed)) pdu_packet
 struct __attribute__ ((packed)) pdu_telem
 {
     PDU_Type type;
-    uint8_t sw_state[12];
+    uint8_t sw_state[15];  // Increased to 15 to include None, All, and all switches
 };
 
 void decode_pdu_packet(const char *input);
