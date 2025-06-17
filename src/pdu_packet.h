@@ -4,6 +4,11 @@
 #include "string.h"
 #include "stdint.h"
 
+/* ASCII offset for command values (48 = '0' in ASCII)
+ * Used to convert between ASCII digits and numeric values:
+ * - ASCII to value: subtract PDU_CMD_OFFSET
+ * - Value to ASCII: add PDU_CMD_OFFSET
+ */
 #define PDU_CMD_OFFSET 48
 #define PDU_MAX_PACKET_SIZE 16  // Size of largest packet (pdu_telem: 1B type + 15B sw_state)
 
