@@ -161,6 +161,7 @@ void decode_pdu_packet(const char *input)
                         break;
                 }
             }
+            break;  // Prevent fall-through to CommandGetSwitchStatus
         case CommandGetSwitchStatus:
             if(packet.sw == All) {
                 struct pdu_telem telem;
