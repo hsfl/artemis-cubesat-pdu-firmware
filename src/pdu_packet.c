@@ -3,20 +3,20 @@
 
 void decode_pdu_packet(const char *input)
 {
+    static uint8_t tx_buf[PDU_MAX_PACKET_SIZE];  // Large enough for both pdu_packet (3B) and pdu_telem (13B)
     struct pdu_packet packet;
     packet.type = input[0] - PDU_CMD_OFFSET;
     packet.sw = input[1] - PDU_CMD_OFFSET;
     packet.sw_state = input[2] - PDU_CMD_OFFSET;
     
-    char *reply = malloc(sizeof(struct pdu_packet));
     switch(packet.type)
     {
         case CommandPing:
             packet.type = DataPong + PDU_CMD_OFFSET;
             packet.sw += PDU_CMD_OFFSET;
             packet.sw_state += PDU_CMD_OFFSET;
-            memcpy(reply, &packet, sizeof(struct pdu_packet));
-            SERCOM3_USART_Write(&reply[0], sizeof(struct pdu_packet));
+            memcpy(tx_buf, &packet, sizeof(struct pdu_packet));
+            SERCOM3_USART_Write(tx_buf, sizeof(struct pdu_packet));
             SERCOM3_USART_Write("\r\n", 2);
             break;
         case CommandSetSwitch:
@@ -163,8 +163,6 @@ void decode_pdu_packet(const char *input)
             }
         case CommandGetSwitchStatus:
             if(packet.sw == All) {
-                free(reply);
-                reply = malloc(sizeof(struct pdu_telem));
                 struct pdu_telem telem;
                 telem.type = DataSwitchTelem + PDU_CMD_OFFSET;
                 telem.sw_state[0] = PORT_PinRead(SW_3V3_EN1_PIN) + PDU_CMD_OFFSET;
@@ -191,8 +189,8 @@ void decode_pdu_packet(const char *input)
                                 PORT_PinRead(IN8_PIN) &&
                                 PORT_PinRead(TRQ2_PIN) &&
                                 PORT_PinRead(SLEEP2_PIN)) + PDU_CMD_OFFSET;
-                memcpy(reply, &telem, sizeof(struct pdu_telem));
-                SERCOM3_USART_Write(&reply[0], sizeof(struct pdu_telem));
+                memcpy(tx_buf, &telem, sizeof(struct pdu_telem));
+                SERCOM3_USART_Write(tx_buf, sizeof(struct pdu_telem));
                 SERCOM3_USART_Write("\r\n", 2);
                 break;
             } 
@@ -252,14 +250,13 @@ void decode_pdu_packet(const char *input)
             }
             packet.sw += PDU_CMD_OFFSET;
             packet.sw_state += PDU_CMD_OFFSET;
-            memcpy(reply, &packet, sizeof(struct pdu_packet));
-            SERCOM3_USART_Write(&reply[0], sizeof(struct pdu_packet));
+            memcpy(tx_buf, &packet, sizeof(struct pdu_packet));
+            SERCOM3_USART_Write(tx_buf, sizeof(struct pdu_packet));
             SERCOM3_USART_Write("\r\n", 2);
             break;
         default:
             break;
     };
-    free(reply);
 }
 
 void enableAllGPIOs(void) {

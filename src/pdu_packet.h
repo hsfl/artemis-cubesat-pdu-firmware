@@ -5,6 +5,7 @@
 #include "stdint.h"
 
 #define PDU_CMD_OFFSET 48
+#define PDU_MAX_PACKET_SIZE 13  // Size of largest packet (pdu_telem: 1B type + 12B sw_state)
 
 enum PDU_Type
 {
