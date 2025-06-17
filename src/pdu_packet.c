@@ -301,7 +301,7 @@ void disableAllGPIOs(void) {
     SW_5V_EN4_Clear();
     SW_VBATT_EN_Clear();
 //    WDT_WDI_Clear();
-    BURN1_EN_Set();
+    BURN1_EN_Clear();
     IN1_Clear();
     IN2_Clear();
     IN3_Clear();
