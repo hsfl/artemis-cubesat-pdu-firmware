@@ -137,6 +137,39 @@ static void lStateMachineTask(void *pvParameters)
         // Example: Could add event polling, error detection, or state monitoring here
         // For now, just demonstrate state monitoring
         pdu_state_t state = pdu_state_machine_get_state(&pduStateMachine);
+        
+        // Boilerplate state checking template - ensures state variable is used
+        switch (state)
+        {
+            case PDU_STATE_OFF:
+                // Handle off state
+                break;
+            case PDU_STATE_INIT:
+                // Handle initialization state
+                break;
+            case PDU_STATE_SAFE:
+                // Handle safe state
+                break;
+            case PDU_STATE_STANDBY:
+                // Handle standby state
+                break;
+            case PDU_STATE_NOMINAL:
+                // Handle nominal state
+                break;
+            case PDU_STATE_EMERGENCY:
+                // Handle emergency state
+                break;
+            case PDU_STATE_DIAGNOSTIC:
+                // Handle diagnostic state
+                break;
+            case PDU_STATE_SHUTDOWN:
+                // Handle shutdown state
+                break;
+            default:
+                // Handle unknown state
+                break;
+        }
+        
         // TODO: Add event polling and error detection logic
         vTaskDelay(pdMS_TO_TICKS(STATE_MACHINE_TASK_PERIOD_MS));
     }
