@@ -53,6 +53,7 @@
 #include "configuration.h"
 #include "definitions.h"
 #include "sys_tasks.h"
+#include "state_machine.h"
 
 
 // *****************************************************************************
@@ -63,6 +64,7 @@
 
 /* -------- constants -------------------------------------------------- */
 #define WATCHDOG_PERIOD_MS   500     // 0.5-s edges (well inside 10-s MAX16998 window)
+#define STATE_MACHINE_TASK_PERIOD_MS 100
 
 static void lWatchdogTask(void *pvParameters)
 {
@@ -116,6 +118,27 @@ static void lAPP_Tasks(  void *pvParameters  )
     while(true)
     {
         APP_Tasks();
+    }
+}
+
+/**
+ * @brief FreeRTOS task for PDU state machine event processing and monitoring
+ *
+ * This task runs periodically (every STATE_MACHINE_TASK_PERIOD_MS ms) to handle state machine
+ * event processing, state monitoring, and error detection. Add event polling, hardware monitoring,
+ * and error handling logic here as needed for your application.
+ *
+ * @param pvParameters Not used
+ */
+static void lStateMachineTask(void *pvParameters)
+{
+    while (true)
+    {
+        // Example: Could add event polling, error detection, or state monitoring here
+        // For now, just demonstrate state monitoring
+        pdu_state_t state = pdu_state_machine_get_state(&pduStateMachine);
+        // TODO: Add event polling and error detection logic
+        vTaskDelay(pdMS_TO_TICKS(STATE_MACHINE_TASK_PERIOD_MS));
     }
 }
 
@@ -192,6 +215,16 @@ void SYS_Tasks ( void )
            NULL,
            1U ,
            &xAPP_Tasks);
+
+    /* Create state machine task */
+    (void) xTaskCreate(
+        lStateMachineTask,
+        "STATE_MACHINE",
+        configMINIMAL_STACK_SIZE,
+        NULL,
+        tskIDLE_PRIORITY + 1,
+        NULL
+    );
 
     /* Start RTOS Scheduler. */
     

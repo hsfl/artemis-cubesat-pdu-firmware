@@ -60,6 +60,7 @@
 #include <ctype.h>
 #include "configuration.h"
 #include "system/fs/sys_fs.h"
+#include "state_machine.h"
 
 // DOM-IGNORE-BEGIN
 #ifdef __cplusplus  // Provide C++ Compatibility
@@ -235,6 +236,18 @@ void APP_Initialize ( void );
 
 void APP_Tasks( void );
 
+/**
+ * @brief Global PDU state machine instance
+ *
+ * This variable holds the main state machine context for the Power Distribution Unit (PDU).
+ * It is initialized during application startup and is used throughout the system to manage
+ * operational states and transitions. Access this variable to query or update the PDU state.
+ *
+ * Usage example:
+ *   pdu_state_machine_init(&pduStateMachine);
+ *   pdu_state_machine_process_event(&pduStateMachine, PDU_EVENT_POWER_ON);
+ */
+extern pdu_state_machine_t pduStateMachine;
 
 #endif /* APP_H */
 

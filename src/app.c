@@ -56,6 +56,7 @@
 #include "definitions.h"
 #include "ff.h"
 #include "pdu_packet.h"
+#include "state_machine.h"
 
 // *****************************************************************************
 // *****************************************************************************
@@ -96,6 +97,15 @@ void FATFS_APP(void);
 FATFS FatFs;	/* FatFs work area needed for each volume */
 FIL Fil;		/* File object needed for each open file */
 
+/**
+ * @brief Global PDU state machine instance
+ *
+ * This variable holds the main state machine context for the Power Distribution Unit (PDU).
+ * It is initialized during application startup and is used throughout the system to manage
+ * operational states and transitions.
+ */
+pdu_state_machine_t pduStateMachine;
+
 /*******************************************************************************
   Function:
     void APP_Initialize ( void )
@@ -112,6 +122,12 @@ void APP_Initialize ( void )
     RTC_Timer32Start();
     SERCOM4_I2C_Initialize();
     //SERCOM2_SPI_Initialize();
+    /**
+     * @brief Initialize the PDU state machine
+     *
+     * This call sets up the state machine to its initial state (OFF) and prepares it for event processing.
+     */
+    pdu_state_machine_init(&pduStateMachine);
 }
 
 
@@ -125,6 +141,9 @@ void APP_Initialize ( void )
 
 void APP_Tasks ( void )
 {
+    if (pdu_state_machine_get_state(&pduStateMachine) == PDU_STATE_OFF) {
+        pdu_state_machine_process_event(&pduStateMachine, PDU_EVENT_POWER_ON);
+    }
     USART_READ();
 //    I2C_READ();
     //FATFS_APP();
