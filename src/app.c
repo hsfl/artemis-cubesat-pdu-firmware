@@ -57,6 +57,7 @@
 #include "ff.h"
 #include "pdu_packet.h"
 #include "state_machine.h"
+#include "artemisqueues.h"
 
 // *****************************************************************************
 // *****************************************************************************
@@ -117,9 +118,8 @@ pdu_state_machine_t pduStateMachine;
 void APP_Initialize ( void )
 {
 //    SERCOM3_USART_Write(&APP_INIT_MSG[0], sizeof(APP_INIT_MSG));
-    disableGPIOs();
-    RTC_Initialize();
-    RTC_Timer32Start();
+    //disableGPIOs(); redudant - assuming everything is already off?
+    RTC_Timer32Start(); // idk why we do this? test if this does something.
     SERCOM4_I2C_Initialize();
     //SERCOM2_SPI_Initialize();
     /**
@@ -128,6 +128,8 @@ void APP_Initialize ( void )
      * This call sets up the state machine to its initial state (OFF) and prepares it for event processing.
      */
     pdu_state_machine_init(&pduStateMachine);
+
+    artemisqueues_initialize();
 }
 
 
