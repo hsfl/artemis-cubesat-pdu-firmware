@@ -27,7 +27,7 @@ QueueHandle_t xQueueTelemetry = NULL;
 // QueueHandle_t xQueueCommands = NULL;
 
 #define SYSTEM_EVENT_ITEM_SIZE sizeof(uint32_t)
-#define TELEMETRY_QUEUE_ITEM_SIZE sizeof(uint32_t)
+#define TELEMETRY_QUEUE_ITEM_SIZE sizeof(pdu_telemetry_t)
 // #define COMMAND_ITEM_SIZE sizeof(uint32_t)
 
 #define SYSTEM_EVENT_QUEUE_LENGTH 8
