@@ -92,6 +92,8 @@ void I2C_READ(void);
 void enableGPIOs(void);
 void disableGPIOs(void);
 void FATFS_APP(void);
+// Forward declaration for LED task used in tasks.c
+void LED_Task(void *pvParameters);
 
 FATFS FatFs;	/* FatFs work area needed for each volume */
 FIL Fil;		/* File object needed for each open file */
