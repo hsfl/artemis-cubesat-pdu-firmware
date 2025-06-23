@@ -54,6 +54,8 @@
 #include "definitions.h"
 #include "sys_tasks.h"
 
+// Add extern declaration for LED_Task
+extern void LED_Task(void *pvParameters);
 
 // *****************************************************************************
 // *****************************************************************************
@@ -192,6 +194,16 @@ void SYS_Tasks ( void )
            NULL,
            1U ,
            &xAPP_Tasks);
+
+    /* Create LED blink/solid task */
+    (void) xTaskCreate(
+        LED_Task,
+        "LED_TASK",
+        configMINIMAL_STACK_SIZE,
+        NULL,
+        tskIDLE_PRIORITY + 2,
+        NULL
+    );
 
     /* Start RTOS Scheduler. */
     

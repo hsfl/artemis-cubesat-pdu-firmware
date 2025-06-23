@@ -96,6 +96,28 @@ void FATFS_APP(void);
 FATFS FatFs;	/* FatFs work area needed for each volume */
 FIL Fil;		/* File object needed for each open file */
 
+// LED blink control for PDU packet processing
+static volatile bool pdu_processing = false;
+#define LED_RAPID_BLINK_MS 100
+
+static void LED_Task(void *pvParameters)
+{
+    LED_OutputEnable();
+    while (true)
+    {
+        if (pdu_processing)
+        {
+            LED_Toggle();
+            vTaskDelay(pdMS_TO_TICKS(LED_RAPID_BLINK_MS));
+        }
+        else
+        {
+            LED_Set();
+            vTaskDelay(pdMS_TO_TICKS(50)); // Polling interval
+        }
+    }
+}
+
 /*******************************************************************************
   Function:
     void APP_Initialize ( void )
@@ -112,6 +134,8 @@ void APP_Initialize ( void )
     RTC_Timer32Start();
     SERCOM4_I2C_Initialize();
     //SERCOM2_SPI_Initialize();
+    //set the LED solid color once initialized
+    LED_Set();
 }
 
 
@@ -127,7 +151,7 @@ void APP_Tasks ( void )
 {
     USART_READ();
 //    I2C_READ();
-    //FATFS_APP();
+ //FATFS_APP();
 }
 
 UINT bw;
@@ -167,8 +191,9 @@ void USART_READ(void) {
 //                    SERCOM3_USART_Write("\r\n", 2);
 //                    SERCOM3_USART_Write(&newline[0],sizeof(newline));
                     rxCounter = 0;
+                    pdu_processing = true;
                     decode_pdu_packet(receiveBuffer);
-                    
+                    pdu_processing = false;
 //                    read_CMD(receiveBuffer);
                 }
                 else
