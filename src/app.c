@@ -93,7 +93,7 @@ void enableGPIOs(void);
 void disableGPIOs(void);
 void FATFS_APP(void);
 // Forward declaration for LED task used in tasks.c
-void LED_Task(void *pvParameters);
+void LED_Task(void *pvParameters) __attribute__((used));
 
 FATFS FatFs;	/* FatFs work area needed for each volume */
 FIL Fil;		/* File object needed for each open file */
@@ -102,7 +102,7 @@ FIL Fil;		/* File object needed for each open file */
 static volatile bool pdu_processing = false;
 #define LED_RAPID_BLINK_MS 100
 
-static void LED_Task(void *pvParameters)
+void LED_Task(void *pvParameters)
 {
     LED_OutputEnable();
     while (true)
