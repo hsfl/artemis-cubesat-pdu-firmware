@@ -92,9 +92,33 @@ void I2C_READ(void);
 void enableGPIOs(void);
 void disableGPIOs(void);
 void FATFS_APP(void);
+// Forward declaration for LED task used in tasks.c
+void LED_Task(void *pvParameters) __attribute__((used));
 
 FATFS FatFs;	/* FatFs work area needed for each volume */
 FIL Fil;		/* File object needed for each open file */
+
+// LED blink control for PDU packet processing
+static volatile bool pdu_processing = false;
+#define LED_RAPID_BLINK_MS 100
+
+void LED_Task(void *pvParameters)
+{
+    LED_OutputEnable();
+    while (true)
+    {
+        if (pdu_processing)
+        {
+            LED_Toggle();
+            vTaskDelay(pdMS_TO_TICKS(LED_RAPID_BLINK_MS));
+        }
+        else
+        {
+            LED_Set();
+            vTaskDelay(pdMS_TO_TICKS(50)); // Polling interval
+        }
+    }
+}
 
 /*******************************************************************************
   Function:
@@ -112,6 +136,8 @@ void APP_Initialize ( void )
     RTC_Timer32Start();
     SERCOM4_I2C_Initialize();
     //SERCOM2_SPI_Initialize();
+    //set the LED solid color once initialized
+    LED_Set();
     //set the LED solid color once initialized
     LED_Set();
 }
@@ -169,6 +195,7 @@ void USART_READ(void) {
 //                    SERCOM3_USART_Write("\r\n", 2);
 //                    SERCOM3_USART_Write(&newline[0],sizeof(newline));
                     rxCounter = 0;
+                    pdu_processing = true;
                     decode_pdu_packet(receiveBuffer);
 
 //                    read_CMD(receiveBuffer);
