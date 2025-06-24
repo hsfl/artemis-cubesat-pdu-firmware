@@ -112,6 +112,8 @@ void APP_Initialize ( void )
     RTC_Timer32Start();
     SERCOM4_I2C_Initialize();
     //SERCOM2_SPI_Initialize();
+    //set the LED solid color once initialized
+    LED_Set();
 }
 
 
@@ -127,7 +129,7 @@ void APP_Tasks ( void )
 {
     USART_READ();
 //    I2C_READ();
-    //FATFS_APP();
+ //FATFS_APP();
 }
 
 UINT bw;
@@ -168,7 +170,7 @@ void USART_READ(void) {
 //                    SERCOM3_USART_Write(&newline[0],sizeof(newline));
                     rxCounter = 0;
                     decode_pdu_packet(receiveBuffer);
-                    
+
 //                    read_CMD(receiveBuffer);
                 }
                 else
