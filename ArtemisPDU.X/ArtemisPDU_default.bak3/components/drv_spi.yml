@@ -1,0 +1,50 @@
+configVersion: 1.0.0
+componentName: drv_spi
+coreVersion: 5.8.2
+device: ATSAME51N19A
+library: []
+dependency:
+- dependencyPackage: class com.microchip.mcc.harmony.HarmonyModule
+  name: drv_spi
+  type: module
+  version: ''
+- dependencyPackage: ''
+  name: core
+  type: package
+  version: v3.15.2
+customDataClassName: com.microchip.utils_mh3.utils.persistence.CustomModuleData
+data:
+  attachments: {}
+  elementPosition:
+    attributes:
+      id: __ROOTVIEW
+    children:
+    - children:
+      - attributes:
+          id: drv_spi
+          x: '419'
+          y: '401'
+        type: ElementPosition
+      type: ElementPositions
+    type: ComponentGraph
+  symbols:
+    DRV_SPI_COMMON_MODE:
+      attributes:
+        id: DRV_SPI_COMMON_MODE
+      children:
+      - children:
+        - attributes:
+            id: readOnly
+          children:
+          - type: Value
+            value: 'true'
+          type: Boolean
+        type: Attributes
+      - children:
+        - attributes:
+            id: drv_spi
+            value: Synchronous
+          type: Dynamic
+        type: Values
+      type: Combo
+  userData: {}

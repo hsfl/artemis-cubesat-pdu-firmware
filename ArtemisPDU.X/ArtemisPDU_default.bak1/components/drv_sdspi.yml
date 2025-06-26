@@ -1,0 +1,73 @@
+configVersion: 1.0.0
+componentName: drv_sdspi
+coreVersion: 5.8.2
+device: ATSAME51N19A
+library: []
+dependency:
+- dependencyPackage: class com.microchip.mcc.harmony.HarmonyModule
+  name: drv_sdspi
+  type: module
+  version: ''
+- dependencyPackage: ''
+  name: CMSIS_5
+  type: package
+  version: 5.9.0
+- dependencyPackage: ''
+  name: FreeRTOS-Kernel
+  type: package
+  version: V11.2.0
+- dependencyPackage: ''
+  name: core
+  type: package
+  version: v3.15.1
+- dependencyPackage: ''
+  name: csp
+  type: package
+  version: v3.22.2
+- dependencyPackage: ''
+  name: filex
+  type: package
+  version: v6.4.0_rel
+- dependencyPackage: ''
+  name: littlefs
+  type: package
+  version: v2.10.2
+customDataClassName: com.microchip.utils_mh3.utils.persistence.CustomModuleData
+data:
+  attachments: {}
+  elementPosition:
+    attributes:
+      id: __ROOTVIEW
+    children:
+    - children:
+      - attributes:
+          id: drv_sdspi
+          x: '696'
+          y: '388'
+        type: ElementPosition
+      type: ElementPositions
+    type: ComponentGraph
+  symbols:
+    DRV_SDSPI_COMMON_FS_ENABLE:
+      attributes:
+        id: DRV_SDSPI_COMMON_FS_ENABLE
+      children:
+      - children:
+        - attributes:
+            id: drv_sdspi
+            value: 'true'
+          type: Dynamic
+        type: Values
+      type: Boolean
+    DRV_SDSPI_COMMON_SPI_DRV_INSTANCE_CNT:
+      attributes:
+        id: DRV_SDSPI_COMMON_SPI_DRV_INSTANCE_CNT
+      children:
+      - children:
+        - attributes:
+            id: drv_sdspi
+            value: '1'
+          type: Dynamic
+        type: Values
+      type: Integer
+  userData: {}

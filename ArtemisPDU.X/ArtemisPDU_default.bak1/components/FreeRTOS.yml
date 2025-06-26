@@ -1,0 +1,71 @@
+configVersion: 1.0.0
+componentName: FreeRTOS
+coreVersion: 5.8.2
+device: ATSAME51N19A
+library: []
+dependency:
+- dependencyPackage: class com.microchip.mcc.harmony.HarmonyModule
+  name: FreeRTOS
+  type: module
+  version: ''
+- dependencyPackage: ''
+  name: CMSIS_5
+  type: package
+  version: 5.9.0
+- dependencyPackage: ''
+  name: FreeRTOS-Kernel
+  type: package
+  version: V11.2.0
+- dependencyPackage: ''
+  name: core
+  type: package
+  version: v3.15.1
+- dependencyPackage: ''
+  name: csp
+  type: package
+  version: v3.22.2
+- dependencyPackage: ''
+  name: filex
+  type: package
+  version: v6.4.0_rel
+- dependencyPackage: ''
+  name: littlefs
+  type: package
+  version: v2.10.2
+customDataClassName: com.microchip.utils_mh3.utils.persistence.CustomModuleData
+data:
+  attachments: {}
+  elementPosition:
+    attributes:
+      id: __ROOTVIEW
+    children:
+    - children:
+      - attributes:
+          id: FreeRTOS
+          x: '502'
+          y: '16'
+        type: ElementPosition
+      type: ElementPositions
+    type: ComponentGraph
+  symbols:
+    FREERTOS_INCLUDE_XRESUMEFROMISR:
+      attributes:
+        id: FREERTOS_INCLUDE_XRESUMEFROMISR
+      children:
+      - children:
+        - attributes:
+            value: 'true'
+          type: User
+        type: Values
+      type: Boolean
+    FREERTOS_TICK_TYPE_WIDTH_IN_BITS:
+      attributes:
+        id: FREERTOS_TICK_TYPE_WIDTH_IN_BITS
+      children:
+      - children:
+        - attributes:
+            value: 16_BITS
+          type: User
+        type: Values
+      type: Combo
+  userData: {}

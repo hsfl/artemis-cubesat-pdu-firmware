@@ -1,0 +1,53 @@
+configVersion: 1.0.0
+componentName: drv_sdspi
+coreVersion: 5.8.2
+device: ATSAME51N19A
+library: []
+dependency:
+- dependencyPackage: class com.microchip.mcc.harmony.HarmonyModule
+  name: drv_sdspi
+  type: module
+  version: ''
+- dependencyPackage: ''
+  name: core
+  type: package
+  version: v3.15.2
+customDataClassName: com.microchip.utils_mh3.utils.persistence.CustomModuleData
+data:
+  attachments: {}
+  elementPosition:
+    attributes:
+      id: __ROOTVIEW
+    children:
+    - children:
+      - attributes:
+          id: drv_sdspi
+          x: '674'
+          y: '373'
+        type: ElementPosition
+      type: ElementPositions
+    type: ComponentGraph
+  symbols:
+    DRV_SDSPI_COMMON_FS_ENABLE:
+      attributes:
+        id: DRV_SDSPI_COMMON_FS_ENABLE
+      children:
+      - children:
+        - attributes:
+            id: drv_sdspi
+            value: 'true'
+          type: Dynamic
+        type: Values
+      type: Boolean
+    DRV_SDSPI_COMMON_SPI_DRV_INSTANCE_CNT:
+      attributes:
+        id: DRV_SDSPI_COMMON_SPI_DRV_INSTANCE_CNT
+      children:
+      - children:
+        - attributes:
+            id: drv_sdspi
+            value: '1'
+          type: Dynamic
+        type: Values
+      type: Integer
+  userData: {}
