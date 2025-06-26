@@ -56,6 +56,7 @@
 #include "definitions.h"
 #include "ff.h"
 #include "pdu_packet.h"
+#include <stdio.h>
 
 // *****************************************************************************
 // *****************************************************************************
@@ -77,12 +78,37 @@ char SD_FAILED_MSG[] = "SD FAIL\r\n";
 
 // USART Definitions
 // *****************************************************************************
-#define RX_BUFFER_SIZE 256
+#define RX_BUFFER_SIZE 512  // Increased buffer size for better reliability
+#define TX_BUFFER_SIZE 256
+
+// Circular buffer structure for USART
+typedef struct {
+    uint8_t buffer[RX_BUFFER_SIZE];
+    volatile uint16_t head;
+    volatile uint16_t tail;
+    volatile uint16_t count;
+    volatile bool overflow;
+} usart_rx_buffer_t;
+
+typedef struct {
+    uint8_t buffer[TX_BUFFER_SIZE];
+    volatile uint16_t head;
+    volatile uint16_t tail;
+    volatile uint16_t count;
+} usart_tx_buffer_t;
+
 char newline[] = "\r\n";
 char errorMessage[] = "\r\n**** USART error has occurred ****\r\n";
-char receiveBuffer[RX_BUFFER_SIZE] = {};
-int data = 0;
-uint16_t rxCounter = 0;
+char overflowMessage[] = "\r\n**** USART buffer overflow ****\r\n";
+char bufferResetMessage[] = "\r\n**** USART buffer reset ****\r\n";
+
+// Global buffer instances
+static usart_rx_buffer_t rxBuffer = {0};
+static usart_tx_buffer_t txBuffer = {0};
+
+// Command processing buffer
+char commandBuffer[256];
+uint16_t commandLength = 0;
 // *****************************************************************************
 
 void read_CMD(char *cmd);
@@ -92,6 +118,21 @@ void I2C_READ(void);
 void enableGPIOs(void);
 void disableGPIOs(void);
 void FATFS_APP(void);
+
+// USART Buffer Management Functions
+void usart_rx_buffer_init(void);
+bool usart_rx_buffer_put(uint8_t data);
+bool usart_rx_buffer_get(uint8_t *data);
+uint16_t usart_rx_buffer_available(void);
+void usart_rx_buffer_reset(void);
+void usart_tx_buffer_init(void);
+bool usart_tx_buffer_put(uint8_t data);
+bool usart_tx_buffer_get(uint8_t *data);
+uint16_t usart_tx_buffer_available(void);
+void usart_process_command(void);
+void usart_handle_error(USART_ERROR error);
+void usart_safe_write(const char* message, size_t length);
+void usart_print_buffer_status(void);
 
 FATFS FatFs; /* FatFs work area needed for each volume */
 FIL Fil;     /* File object needed for each open file */
@@ -112,6 +153,11 @@ void APP_Initialize(void)
     RTC_Timer32Start();
     SERCOM4_I2C_Initialize();
     // SERCOM2_SPI_Initialize();
+    
+    // Initialize USART buffers
+    usart_rx_buffer_init();
+    usart_tx_buffer_init();
+    
     // set the LED solid color once initialized
     LED_Set();
     // set the LED solid color once initialized
@@ -164,37 +210,34 @@ void FATFS_APP(void)
 
 void USART_READ(void)
 {
+    uint8_t data;
+    USART_ERROR error;
+    
     /* Check if there is a received character */
     if (SERCOM3_USART_ReceiverIsReady() == true)
     {
-        if (SERCOM3_USART_ErrorGet() == USART_ERROR_NONE)
+        /* Check for USART errors first */
+        error = SERCOM3_USART_ErrorGet();
+        if (error != USART_ERROR_NONE)
         {
-            SERCOM3_USART_Read(&data, 1);
-            //                data = SERCOM3_USART_ReadByte();
-
-            if (data == '\r' || data == '\n')
-            {
-                SERCOM3_USART_Write("\0", 1);
-                //                    SERCOM3_USART_Write(&newline[0],sizeof(newline));
-                //                    SERCOM3_USART_Write(&receiveBuffer[0],rxCounter);
-                //                    SERCOM3_USART_Write("\r\n", 2);
-                //                    SERCOM3_USART_Write(&newline[0],sizeof(newline));
-                rxCounter = 0;
-
-                decode_pdu_packet(receiveBuffer);
-
-                //                    read_CMD(receiveBuffer);
-            }
-            else
-            {
-                receiveBuffer[rxCounter++] = data;
-            }
+            usart_handle_error(error);
+            return;
         }
-        else
+        
+        /* Read the data */
+        SERCOM3_USART_Read(&data, 1);
+        
+        /* Add to circular buffer */
+        if (!usart_rx_buffer_put(data))
         {
-            //                SERCOM3_USART_Write(&errorMessage[0],sizeof(errorMessage));
+            /* Buffer overflow occurred */
+            usart_safe_write(overflowMessage, sizeof(overflowMessage) - 1);
+            usart_rx_buffer_reset();
         }
     }
+    
+    /* Process any complete commands in the buffer */
+    usart_process_command();
 }
 
 void I2C_READ(void)
@@ -384,12 +427,197 @@ void read_CMD(char *cmd)
     }
     else if (strstr(cmd, "CMD: FATFS"))
         FATFS_APP();
+    else if (strstr(cmd, "CMD: BUFFER STATUS"))
+        usart_print_buffer_status();
 }
 
 void delay_ms(int delay)
 {
     for (uint8_t i = 0; i < delay; i++)
         asm("NOP");
+}
+
+// *****************************************************************************
+// USART Buffer Management Functions
+// *****************************************************************************
+
+void usart_rx_buffer_init(void)
+{
+    rxBuffer.head = 0;
+    rxBuffer.tail = 0;
+    rxBuffer.count = 0;
+    rxBuffer.overflow = false;
+}
+
+bool usart_rx_buffer_put(uint8_t data)
+{
+    if (rxBuffer.count >= RX_BUFFER_SIZE)
+    {
+        rxBuffer.overflow = true;
+        return false;
+    }
+    
+    rxBuffer.buffer[rxBuffer.head] = data;
+    rxBuffer.head = (rxBuffer.head + 1) % RX_BUFFER_SIZE;
+    rxBuffer.count++;
+    return true;
+}
+
+bool usart_rx_buffer_get(uint8_t *data)
+{
+    if (rxBuffer.count == 0)
+    {
+        return false;
+    }
+    
+    *data = rxBuffer.buffer[rxBuffer.tail];
+    rxBuffer.tail = (rxBuffer.tail + 1) % RX_BUFFER_SIZE;
+    rxBuffer.count--;
+    return true;
+}
+
+uint16_t usart_rx_buffer_available(void)
+{
+    return rxBuffer.count;
+}
+
+void usart_rx_buffer_reset(void)
+{
+    rxBuffer.head = 0;
+    rxBuffer.tail = 0;
+    rxBuffer.count = 0;
+    rxBuffer.overflow = false;
+    commandLength = 0;
+    usart_safe_write(bufferResetMessage, sizeof(bufferResetMessage) - 1);
+}
+
+void usart_tx_buffer_init(void)
+{
+    txBuffer.head = 0;
+    txBuffer.tail = 0;
+    txBuffer.count = 0;
+}
+
+bool usart_tx_buffer_put(uint8_t data)
+{
+    if (txBuffer.count >= TX_BUFFER_SIZE)
+    {
+        return false;
+    }
+    
+    txBuffer.buffer[txBuffer.head] = data;
+    txBuffer.head = (txBuffer.head + 1) % TX_BUFFER_SIZE;
+    txBuffer.count++;
+    return true;
+}
+
+bool usart_tx_buffer_get(uint8_t *data)
+{
+    if (txBuffer.count == 0)
+    {
+        return false;
+    }
+    
+    *data = txBuffer.buffer[txBuffer.tail];
+    txBuffer.tail = (txBuffer.tail + 1) % TX_BUFFER_SIZE;
+    txBuffer.count--;
+    return true;
+}
+
+uint16_t usart_tx_buffer_available(void)
+{
+    return txBuffer.count;
+}
+
+void usart_process_command(void)
+{
+    uint8_t data;
+    
+    /* Process all available data in the buffer */
+    while (usart_rx_buffer_get(&data))
+    {
+        /* Check for end of command */
+        if (data == '\r' || data == '\n')
+        {
+            if (commandLength > 0)
+            {
+                /* Null terminate the command */
+                commandBuffer[commandLength] = '\0';
+                
+                /* Process the command */
+                decode_pdu_packet(commandBuffer);
+                // read_CMD(commandBuffer);  // Uncomment if you want to use the old command system
+                
+                /* Reset command buffer */
+                commandLength = 0;
+            }
+        }
+        else if (commandLength < sizeof(commandBuffer) - 1)
+        {
+            /* Add character to command buffer */
+            commandBuffer[commandLength++] = data;
+        }
+        else
+        {
+            /* Command buffer overflow - reset */
+            commandLength = 0;
+            usart_safe_write(overflowMessage, sizeof(overflowMessage) - 1);
+        }
+    }
+}
+
+void usart_handle_error(USART_ERROR error)
+{
+    /* Clear the error */
+    SERCOM3_USART_ErrorGet(); // This will clear the error flags
+    
+    /* Send error message */
+    usart_safe_write(errorMessage, sizeof(errorMessage) - 1);
+    
+    /* Reset buffers on critical errors */
+    if (error == USART_ERROR_OVERRUN)
+    {
+        usart_rx_buffer_reset();
+    }
+    
+    /* Add specific error handling if needed */
+    switch (error)
+    {
+        case USART_ERROR_OVERRUN:
+            usart_safe_write("Buffer Overflow Error\r\n", 23);
+            break;
+        case USART_ERROR_FRAMING:
+            usart_safe_write("Framing Error\r\n", 15);
+            break;
+        case USART_ERROR_PARITY:
+            usart_safe_write("Parity Error\r\n", 14);
+            break;
+        default:
+            usart_safe_write("Unknown Error\r\n", 15);
+            break;
+    }
+}
+
+void usart_safe_write(const char* message, size_t length)
+{
+    /* Check if transmitter is ready before writing */
+    if (SERCOM3_USART_TransmitterIsReady())
+    {
+        SERCOM3_USART_Write((void*)message, length);
+    }
+}
+
+void usart_print_buffer_status(void)
+{
+    char status_msg[64];
+    int len = snprintf(status_msg, sizeof(status_msg), 
+                      "RX Buffer: %d/%d, TX Buffer: %d/%d\r\n",
+                      usart_rx_buffer_available(), RX_BUFFER_SIZE,
+                      usart_tx_buffer_available(), TX_BUFFER_SIZE);
+    if (len > 0 && len < sizeof(status_msg))
+    {
+        usart_safe_write(status_msg, len);
+    }
 }
 
 /*******************************************************************************
