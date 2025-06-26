@@ -36,7 +36,7 @@ generatedFileHashHistoryMap:
 - file: ..\src\config\default\configuration.h
   hash: 10e7bac2279ec9352ef21169792735ca38c6e3f0286092bd45ba9c9f2667cc4f
 - file: ..\src\config\default\definitions.h
-  hash: 053b5761b37f376817b9f311fa017060575ece2c1af610daa548a99ab40a8997
+  hash: 61abd91e29e7caa9e65c4c44502416b8a7e3cd92ea016bab5be89704b6ccd8b2
 - file: ..\src\config\default\device.h
   hash: 2396e674b48c71b46ed1da31828a65ff49202639c7ae1da6d4a5d37e7cc9e5ad
 - file: ..\src\config\default\device_cache.h
