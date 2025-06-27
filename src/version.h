@@ -6,10 +6,10 @@
 #ifndef VERSION_H
 #define VERSION_H
 
-// Version information
-#define VERSION_MAJOR       1
-#define VERSION_MINOR       0
-#define VERSION_PATCH       0
+// Version information - match with revision board, then use patch for any software update
+#define VERSION_MAJOR       2
+#define VERSION_MINOR       2
+#define VERSION_PATCH       1
 
 // Build information
 #define BUILD_DATE         __DATE__
