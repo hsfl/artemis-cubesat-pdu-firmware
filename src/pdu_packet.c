@@ -6,7 +6,21 @@ void enableAllGPIOs(void); //should only be useful in this file?
 
 void decode_pdu_packet(const char *input)
 {
+    /*
+     * NOTE FOR DEVELOPERS:
+     * When decoding incoming packets, we must REMOVE the PDU_CMD_ASCII_OFFSET from all fields
+     * (type, sw, sw_state) to convert from ASCII protocol values to internal enum values.
+     * 
+     * When SENDING packets or telemetry back, we must ADD the PDU_CMD_ASCII_OFFSET to all fields
+     * (type, sw, sw_state) to convert from internal enum values to ASCII protocol values.
+     * 
+     * This ensures protocol compliance and correct communication with the ground station or other systems.
+     * 
+     * Always follow this pattern for any new packet types or protocol changes.
+     */
+
     pdu_packet packet;
+    // Remove ASCII offset when decoding incoming packet
     packet.type = (PDU_Type)(input[0] - PDU_CMD_ASCII_OFFSET);
     packet.sw = (PDU_SW)(input[1] - PDU_CMD_ASCII_OFFSET);
     packet.sw_state = input[2] - PDU_CMD_ASCII_OFFSET;
@@ -15,7 +29,8 @@ void decode_pdu_packet(const char *input)
     switch(packet.type)
     {
         case CommandPing:
-            packet.type = DataPong;
+            // Add ASCII offset to all fields before sending back
+            packet.type = DataPong + PDU_CMD_ASCII_OFFSET;
             packet.sw = (PDU_SW)((uint8_t)packet.sw + PDU_CMD_ASCII_OFFSET);
             packet.sw_state += PDU_CMD_ASCII_OFFSET;
             memcpy(reply, &packet, sizeof(pdu_packet));
@@ -170,7 +185,8 @@ void decode_pdu_packet(const char *input)
                 free(reply);
                 reply = malloc(sizeof(pdu_telem));
                 pdu_telem telem;
-                telem.type = DataSwitchTelem;
+                // Add ASCII offset to type and all sw_state fields before sending back
+                telem.type = DataSwitchTelem + PDU_CMD_ASCII_OFFSET;
                 telem.sw_state[0] = PORT_PinRead(SW_3V3_EN1_PIN) + PDU_CMD_ASCII_OFFSET;
                 telem.sw_state[1] = PORT_PinRead(SW_3V3_EN2_PIN) + PDU_CMD_ASCII_OFFSET;
                 telem.sw_state[2] = PORT_PinRead(SW_5V_EN1_PIN) + PDU_CMD_ASCII_OFFSET;
@@ -200,7 +216,8 @@ void decode_pdu_packet(const char *input)
                 SERCOM3_USART_Write("\r\n", 2);
                 break;
             } 
-            packet.type = DataSwitchTelem;
+            // Add ASCII offset to all fields before sending back
+            packet.type = DataSwitchTelem + PDU_CMD_ASCII_OFFSET;
             switch(packet.sw)
             {
                 case SW_3V3_1:
