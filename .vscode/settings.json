@@ -1,6 +1,7 @@
 {
     "files.associations": {
         "pdu_packet.h": "c",
-        "pdu_protocol.h": "c"
+        "pdu_protocol.h": "c",
+        "definitions.h": "c"
     }
 }

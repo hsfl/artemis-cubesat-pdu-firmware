@@ -1,6 +1,8 @@
+#include "artemis-cubesat-protocols/pdu/pdu_protocol.h"
 #include "pdu_packet.h"
 #include "definitions.h"
-#include "artemis-cubesat-protocols/pdu/pdu_protocol.h"
+
+void enableAllGPIOs(void); //should only be useful in this file?
 
 void decode_pdu_packet(const char *input)
 {
