@@ -12,51 +12,51 @@ void decode_pdu_packet(const char *input)
     char *reply = malloc(sizeof(struct pdu_packet));
     switch(packet.type)
     {
-        case PDU_Type::CommandPing:
-            packet.type = PDU_Type::DataPong;
+        case CommandPing:
+            packet.type = DataPong;
             packet.sw = (PDU_SW)((uint8_t)packet.sw + PDU_CMD_ASCII_OFFSET);
             packet.sw_state += PDU_CMD_ASCII_OFFSET;
             memcpy(reply, &packet, sizeof(struct pdu_packet));
             SERCOM3_USART_Write(&reply[0], sizeof(struct pdu_packet));
             SERCOM3_USART_Write("\r\n", 2);
             break;
-        case PDU_Type::CommandSetSwitch:
+        case CommandSetSwitch:
             if(packet.sw_state == 1)
             {
                 switch(packet.sw)
                 {
-                    case PDU_SW::All:
+                    case All:
                         enableAllGPIOs();
                         break;
-                    case PDU_SW::SW_3V3_1:
+                    case SW_3V3_1:
                         SW_3V3_EN1_Set();
                         break;
-                    case PDU_SW::SW_3V3_2:
+                    case SW_3V3_2:
                         SW_3V3_EN2_Set();
                         break;
-                    case PDU_SW::SW_5V_1:
+                    case SW_5V_1:
                         SW_5V_EN1_Set();
                         break;
-                    case PDU_SW::SW_5V_2:
+                    case SW_5V_2:
                         SW_5V_EN2_Set();
                         break;
-                    case PDU_SW::SW_5V_3:
+                    case SW_5V_3:
                         SW_5V_EN3_Set();
                         break;
-                    case PDU_SW::SW_5V_4:
+                    case SW_5V_4:
                         SW_5V_EN4_Set();
                         break;
-                    case PDU_SW::SW_12V:
+                    case SW_12V:
                         SW_12V_EN1_Set();
                         SW_5V_EN4_Set();
                         break;
-                    case PDU_SW::VBATT:
+                    case VBATT:
                         SW_VBATT_EN_Set();
                         break;
-                    case PDU_SW::WDT:
+                    case WDT:
                         WDT_WDI_Set();
                         break;
-                    case PDU_SW::HBRIDGE1:
+                    case HBRIDGE1:
                         FAULT1_Set();
                         IN1_Set();
                         IN2_Set();
@@ -65,7 +65,7 @@ void decode_pdu_packet(const char *input)
                         TRQ1_Set();
                         SLEEP1_Set();
                         break;
-                    case PDU_SW::HBRIDGE2:
+                    case HBRIDGE2:
                         FAULT2_Set();
                         IN5_Set();
                         IN6_Set();
@@ -74,16 +74,16 @@ void decode_pdu_packet(const char *input)
                         TRQ2_Set();
                         SLEEP2_Set();
                         break;
-                    case PDU_SW::BURN:
+                    case BURN:
                         BURN1_EN_Set();
                         BURN2_EN_Set();
                         BURN_5V_Set();
                         break;
-                    case PDU_SW::BURN1:
+                    case BURN1:
                         BURN1_EN_Set();
                         BURN_5V_Set();
                         break;
-                    case PDU_SW::BURN2:
+                    case BURN2:
                         BURN2_EN_Set();
                         BURN_5V_Set();
                         break;
@@ -94,38 +94,38 @@ void decode_pdu_packet(const char *input)
             {
                 switch(packet.sw)
                 {
-                    case PDU_SW::All:
+                    case All:
                         disableAllGPIOs();
                         break;
-                    case PDU_SW::SW_3V3_1:
+                    case SW_3V3_1:
                         SW_3V3_EN1_Clear();
                         break;
-                    case PDU_SW::SW_3V3_2:
+                    case SW_3V3_2:
                         SW_3V3_EN2_Clear();
                         break;
-                    case PDU_SW::SW_5V_1:
+                    case SW_5V_1:
                         SW_5V_EN1_Clear();
                         break;
-                    case PDU_SW::SW_5V_2:
+                    case SW_5V_2:
                         SW_5V_EN2_Clear();
                         break;
-                    case PDU_SW::SW_5V_3:
+                    case SW_5V_3:
                         SW_5V_EN3_Clear();
                         break;
-                    case PDU_SW::SW_5V_4:
+                    case SW_5V_4:
                         SW_5V_EN4_Clear();
                         break;
-                    case PDU_SW::SW_12V:
+                    case SW_12V:
                         SW_12V_EN1_Clear();
                         SW_5V_EN4_Clear();
                         break;
-                    case PDU_SW::VBATT:
+                    case VBATT:
                         SW_VBATT_EN_Clear();
                         break;
-                    case PDU_SW::WDT:
+                    case WDT:
                         WDT_WDI_Clear();
                         break;
-                    case PDU_SW::HBRIDGE1:
+                    case HBRIDGE1:
                         FAULT1_Clear();
                         IN1_Clear();
                         IN2_Clear();
@@ -134,7 +134,7 @@ void decode_pdu_packet(const char *input)
                         TRQ1_Clear();
                         SLEEP1_Clear();
                         break;
-                    case PDU_SW::HBRIDGE2:
+                    case HBRIDGE2:
                         FAULT2_Clear();
                         IN5_Clear();
                         IN6_Clear();
@@ -143,17 +143,17 @@ void decode_pdu_packet(const char *input)
                         TRQ2_Clear();
                         SLEEP2_Clear();
                         break;
-                    case PDU_SW::BURN:
+                    case BURN:
                         BURN1_EN_Clear();
                         BURN2_EN_Clear();
                         BURN_5V_Clear();
                         break;
-                    case PDU_SW::BURN1:
+                    case BURN1:
                         if(!PORT_PinRead(BURN2_EN_PIN))
                             BURN_5V_Clear();
                         BURN1_EN_Clear();
                         break;
-                    case PDU_SW::BURN2:
+                    case BURN2:
                         if(!PORT_PinRead(BURN1_EN_PIN))
                             BURN_5V_Clear();
                         BURN2_EN_Clear();
@@ -163,12 +163,12 @@ void decode_pdu_packet(const char *input)
                 }
             }
             // fall through to CommandGetSwitchStatus
-        case PDU_Type::CommandGetSwitchStatus:
-            if(packet.sw == PDU_SW::All) {
+        case CommandGetSwitchStatus:
+            if(packet.sw == All) {
                 free(reply);
                 reply = malloc(sizeof(struct pdu_telem));
                 struct pdu_telem telem;
-                telem.type = PDU_Type::DataSwitchTelem;
+                telem.type = DataSwitchTelem;
                 telem.sw_state[0] = PORT_PinRead(SW_3V3_EN1_PIN) + PDU_CMD_ASCII_OFFSET;
                 telem.sw_state[1] = PORT_PinRead(SW_3V3_EN2_PIN) + PDU_CMD_ASCII_OFFSET;
                 telem.sw_state[2] = PORT_PinRead(SW_5V_EN1_PIN) + PDU_CMD_ASCII_OFFSET;
@@ -198,40 +198,40 @@ void decode_pdu_packet(const char *input)
                 SERCOM3_USART_Write("\r\n", 2);
                 break;
             } 
-            packet.type = PDU_Type::DataSwitchTelem;
+            packet.type = DataSwitchTelem;
             switch(packet.sw)
             {
-                case PDU_SW::SW_3V3_1:
+                case SW_3V3_1:
                     packet.sw_state = PORT_PinRead(SW_3V3_EN1_PIN);
                     break;
-                case PDU_SW::SW_3V3_2:
+                case SW_3V3_2:
                     packet.sw_state = PORT_PinRead(SW_3V3_EN2_PIN);
                     break;
-                case PDU_SW::SW_5V_1:
+                case SW_5V_1:
                     packet.sw_state = PORT_PinRead(SW_5V_EN1_PIN);
                     break;
-                case PDU_SW::SW_5V_2:
+                case SW_5V_2:
                     packet.sw_state = PORT_PinRead(SW_5V_EN2_PIN);
                     break;
-                case PDU_SW::SW_5V_3:
+                case SW_5V_3:
                     packet.sw_state = PORT_PinRead(SW_5V_EN3_PIN);
                     break;
-                case PDU_SW::SW_5V_4:
+                case SW_5V_4:
                     packet.sw_state = PORT_PinRead(SW_5V_EN4_PIN);
                     break;
-                case PDU_SW::SW_12V:
+                case SW_12V:
                     packet.sw_state = PORT_PinRead(SW_12V_EN1_PIN) && PORT_PinRead(SW_5V_EN4_PIN);
                     break;
-                case PDU_SW::VBATT:
+                case VBATT:
                     packet.sw_state = PORT_PinRead(SW_VBATT_EN_PIN);
                     break;
-                case PDU_SW::BURN1:
+                case BURN1:
                     packet.sw_state = PORT_PinRead(BURN1_EN_PIN) && PORT_PinRead(BURN_5V_PIN);
                     break;
-                case PDU_SW::BURN2:
+                case BURN2:
                     packet.sw_state = PORT_PinRead(BURN2_EN_PIN) && PORT_PinRead(BURN_5V_PIN);
                     break;
-                case PDU_SW::HBRIDGE1:
+                case HBRIDGE1:
                     packet.sw_state = PORT_PinRead(FAULT1_PIN) &&
                             PORT_PinRead(IN1_PIN) &&
                             PORT_PinRead(IN2_PIN) &&
@@ -240,7 +240,7 @@ void decode_pdu_packet(const char *input)
                             PORT_PinRead(TRQ1_PIN) &&
                             PORT_PinRead(SLEEP1_PIN);
                     break;
-                case PDU_SW::HBRIDGE2:
+                case HBRIDGE2:
                     packet.sw_state = PORT_PinRead(FAULT2_PIN) &&
                             PORT_PinRead(IN5_PIN) &&
                             PORT_PinRead(IN6_PIN) &&
