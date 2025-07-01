@@ -1,0 +1,3 @@
+[submodule "src/artemis-cubesat-protocols"]
+	path = src/artemis-cubesat-protocols
+	url = https://github.com/hsfl/artemis-cubesat-protocols.git
