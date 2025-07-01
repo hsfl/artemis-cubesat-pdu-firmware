@@ -1,6 +1,7 @@
 #include "artemis-cubesat-protocols/pdu/pdu_protocol.h"
 #include "pdu_packet.h"
 #include "definitions.h"
+#include "version.h"
 
 void enableAllGPIOs(void); //should only be useful in this file?
 
@@ -28,15 +29,15 @@ void decode_pdu_packet(const char *input)
     char *reply = malloc(sizeof(pdu_packet));
     switch(packet.type)
     {
-        case CommandPing:
-            // Add ASCII offset to all fields before sending back
-            packet.type = DataPong + PDU_CMD_ASCII_OFFSET;
-            packet.sw = (PDU_SW)((uint8_t)packet.sw + PDU_CMD_ASCII_OFFSET);
-            packet.sw_state += PDU_CMD_ASCII_OFFSET;
-            memcpy(reply, &packet, sizeof(pdu_packet));
-            SERCOM3_USART_Write(&reply[0], sizeof(pdu_packet));
+        case CommandPing: {
+            pdu_pong_packet pong;
+            pong.type = DataPong + PDU_CMD_ASCII_OFFSET;
+            strncpy(pong.version, VERSION_STRING, PDU_VERSION_MAX_LEN - 1);
+            pong.version[PDU_VERSION_MAX_LEN - 1] = '\0';
+            SERCOM3_USART_Write((uint8_t*)&pong, sizeof(pdu_pong_packet));
             SERCOM3_USART_Write("\r\n", 2);
             break;
+        }
         case CommandSetSwitch:
             if(packet.sw_state == 1)
             {
