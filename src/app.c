@@ -86,7 +86,6 @@ uint16_t rxCounter = 0;
 // *****************************************************************************
 
 void read_CMD(char *cmd);
-void delay_ms(int delay);
 void USART_READ(void);
 void I2C_READ(void);
 void enableGPIOs(void);
@@ -106,14 +105,10 @@ FIL Fil;     /* File object needed for each open file */
 
 void APP_Initialize(void)
 {
-    //    SERCOM3_USART_Write(&APP_INIT_MSG[0], sizeof(APP_INIT_MSG));
     disableGPIOs();
     RTC_Initialize();
     RTC_Timer32Start();
     SERCOM4_I2C_Initialize();
-    // SERCOM2_SPI_Initialize();
-    // set the LED solid color once initialized
-    LED_Set();
     // set the LED solid color once initialized
     LED_Set();
 }
@@ -129,8 +124,6 @@ void APP_Initialize(void)
 void APP_Tasks(void)
 {
     USART_READ();
-    //    I2C_READ();
-    // FATFS_APP();
 }
 
 UINT bw;
@@ -384,12 +377,6 @@ void read_CMD(char *cmd)
     }
     else if (strstr(cmd, "CMD: FATFS"))
         FATFS_APP();
-}
-
-void delay_ms(int delay)
-{
-    for (uint8_t i = 0; i < delay; i++)
-        asm("NOP");
 }
 
 /*******************************************************************************
