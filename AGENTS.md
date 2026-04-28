@@ -9,7 +9,8 @@ This repository contains Artemis CubeSat PDU firmware for a Microchip ATSAME51 M
 - `src/main.c`: Harmony entry point. Calls `SYS_Initialize(NULL)`, optionally prints the firmware version, then loops on `SYS_Tasks()`.
 - `src/config/default/tasks.c`: Creates the FreeRTOS tasks for `SYS_FS`, `DRV_SDSPI`, the watchdog, and `APP_Tasks`, then starts the scheduler.
 - `src/app.c` / `src/app.h`: Main handwritten application logic. Handles startup GPIO state, UART polling, RTC/I2C init, and optional FATFS helpers. `APP_Tasks()` currently only polls `USART_READ()`.
-- `src/pdu_packet.c` / `src/pdu_packet.h`: Active packet decode/encode path and GPIO state control for switch commands and telemetry.
+- `src/pdu_packet.c` / `src/pdu_packet.h`: Active framed protocol parser/encoder and GPIO state control for output commands and telemetry.
+- `src/pdu_protocol_v2.h`: Current local protocol definition for framed UART communication with explicit opcodes, output IDs, and status codes.
 - `src/artemis-cubesat-protocols/pdu/pdu_protocol.h`: Shared protocol header, tracked as a Git submodule. This is the on-wire contract source of truth unless a task explicitly says otherwise.
 - `src/config/default/`: Harmony-generated configuration, peripheral drivers, system services, and `definitions.h`.
 - `ArtemisPDU.X/`: MPLAB X project metadata, generated makefiles, and MCC/Harmony configuration snapshots.
@@ -33,11 +34,11 @@ This repository contains Artemis CubeSat PDU firmware for a Microchip ATSAME51 M
 ## Firmware Behavior Notes
 
 - Runtime path:
-  - `src/main.c` -> `SYS_Tasks()` -> `lAPP_Tasks()` -> `APP_Tasks()` -> `USART_READ()` -> `decode_pdu_packet()`
+  - `src/main.c` -> `SYS_Tasks()` -> `lAPP_Tasks()` -> `APP_Tasks()` -> `USART_READ()` -> `pdu_protocol_process_byte()`
 - `APP_Initialize()` calls `disableGPIOs()` on boot, then initializes RTC and SERCOM4 I2C, and sets the LED.
 - `APP_Tasks()` is a tight polling loop; there is no delay in the app task itself.
-- `USART_READ()` accumulates bytes until `'\r'` or `'\n'`, then passes the buffer to `decode_pdu_packet()`.
-- The legacy `read_CMD()` helper still exists in `src/app.c`, but the active runtime path uses `decode_pdu_packet()`.
+- `USART_READ()` feeds bytes into the framed protocol parser in `src/pdu_packet.c`.
+- The legacy `read_CMD()` helper still exists in `src/app.c`, but it is no longer in the active runtime path.
 - Several logical outputs are composite, not single pins:
   - `SW_12V` uses both `SW_5V_EN4` and `SW_12V_EN1`
   - Burn-wire state depends on `BURN_5V` plus `BURN1_EN` and/or `BURN2_EN`
@@ -45,11 +46,12 @@ This repository contains Artemis CubeSat PDU firmware for a Microchip ATSAME51 M
 - Startup semantics are not purely "all off":
   - `disableGPIOs()` clears most rails, but it sets `BURN1_EN`
   - verify active-high/active-low intent from `definitions.h` and board behavior before changing any GPIO default
-- The wire protocol uses ASCII-offset command bytes via `PDU_CMD_ASCII_OFFSET == 48`. Preserve that encode/decode behavior unless the protocol is being intentionally revised.
-- Packet layout matters:
-  - the shared `pdu_packet` struct in the submodule is packed and currently includes `type`, `sw`, `sw_state`, and `trq_value`
-  - `src/pdu_packet.c` only decodes the first three incoming fields today
-  - any protocol change must account for on-wire size, field order, and compatibility with the shared header
+- The active wire protocol is the framed binary protocol defined in `src/pdu_protocol_v2.h` and described in `PDU_PROTOCOL_ICD.md`.
+- The older ASCII-offset shared header under `src/artemis-cubesat-protocols/` is no longer the active runtime contract for this firmware checkout.
+- Packet layout still matters:
+  - use fixed-width fields only on the wire
+  - preserve CRC coverage and frame structure
+  - keep output ID ordering aligned with the ICD summary bitmap and all-output responses
 
 ## Build And Validation
 

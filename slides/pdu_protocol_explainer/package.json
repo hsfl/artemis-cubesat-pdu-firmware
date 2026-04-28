@@ -1,0 +1,22 @@
+{
+  "name": "pdu_protocol_explainer",
+  "version": "1.0.0",
+  "description": "Editable PowerPoint deck explaining the PDU protocol.",
+  "main": "build_deck.js",
+  "scripts": {
+    "build": "node build_deck.js",
+    "render": "python3 render_slides.py pdu_protocol_explainer.pptx --output_dir rendered",
+    "test": "python3 slides_test.py pdu_protocol_explainer.pptx"
+  },
+  "keywords": [],
+  "author": "",
+  "license": "ISC",
+  "type": "commonjs",
+  "dependencies": {
+    "fontkit": "^2.0.4",
+    "linebreak": "^1.1.0",
+    "pptxgenjs": "^4.0.1",
+    "prismjs": "^1.30.0",
+    "skia-canvas": "^3.0.8"
+  }
+}

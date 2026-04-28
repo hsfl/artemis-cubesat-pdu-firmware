@@ -52,25 +52,24 @@ The Raspberry Pi / F' side should consume a simpler mission-facing EPS adapter i
 ## Current Firmware Reality
 
 - Active packet handling is in `src/pdu_packet.c`.
-- Active receive path is `src/app.c` -> `USART_READ()` -> `decode_pdu_packet()`.
-- The current protocol uses ASCII-offset command fields (`PDU_CMD_ASCII_OFFSET == 48`) with raw packed-struct style replies.
-- The shared protocol header already advertises more surface area than the firmware currently implements.
-- Current implementation is sufficient for basic bring-up and switch control, but not ideal as a robust long-lived protocol boundary.
+- Active receive path is `src/app.c` -> `USART_READ()` -> `pdu_protocol_process_byte()`.
+- The active protocol is now the framed binary protocol defined in `src/pdu_protocol_v2.h`.
+- The ICD for the current protocol lives in `PDU_PROTOCOL_ICD.md`.
+- The old ASCII-offset protocol is no longer the active runtime interface in this checkout.
 
-## Current Protocol Weaknesses
+## Current Protocol Direction
 
-- Mixed framing model: ASCII-offset requests with binary struct replies
-- No explicit packet framing beyond newline termination
-- No CRC or transport-level integrity check
-- No sequence number / transaction ID
-- No explicit status/error code model
-- Wire format relies on C struct layout and enum representation
-- Exposes implementation-leaning switch semantics instead of mission-facing EPS control
-- Shared header and firmware implementation are partially out of sync
+- Versioned framed binary transport
+- Fixed-width integer fields only
+- Explicit payload length
+- CRC-16/CCITT integrity checking
+- Sequence-numbered request/response behavior
+- Mission-facing logical output IDs
+- Summary status designed for SOH visibility
 
 ## Refactor Goal
 
-Design a small, stable, binary supervision protocol between Teensy and PDU MCU that is:
+Design and maintain a small, stable, binary supervision protocol between Teensy and PDU MCU that is:
 - demo-first
 - robust on UART
 - explicit about acknowledgements and errors
@@ -78,48 +77,6 @@ Design a small, stable, binary supervision protocol between Teensy and PDU MCU t
 - compatible with keeping safety decisions local to the PDU MCU
 
 Do not optimize first for full mission completeness.
-
-## Recommended Protocol Direction
-
-### General
-
-- Use a versioned binary protocol with fixed-width integer fields only.
-- Do not put raw C enums or compiler-dependent structs directly on the wire.
-- Use explicit framing plus CRC.
-- Match every request with a response using a sequence number.
-- Support asynchronous event messages for important state/fault changes.
-
-### Suggested Transport
-
-- UART transport
-- COBS or SLIP framing
-- CRC-16 over the framed payload contents
-
-### Suggested Message Classes
-
-- request
-- response
-- event
-
-### Suggested Minimal Opcode Set
-
-- `GET_VERSION`
-- `GET_CAPABILITIES`
-- `GET_SUMMARY_STATUS`
-- `GET_DETAILED_STATUS`
-- `SET_RAIL_STATE`
-- `SET_HEATER_STATE`
-- `SET_CHARGER_MODE`
-- `PI_CONTROL`
-- `GET_FAULT_STATUS`
-- `CLEAR_LATCHED_FAULTS`
-- `GET_RESET_INFO`
-
-### Suggested Event Set
-
-- `BOOT_EVENT`
-- `FAULT_EVENT`
-- `STATE_CHANGE_EVENT`
 
 ## What The Protocol Should Prioritize
 
@@ -142,23 +99,20 @@ Do not optimize first for full mission completeness.
 
 The external controller should request intent, not micromanage pins.
 
-## Best Near-Term v2 Scope
+## Current Near-Term Scope
 
-If schedule is tight, a strong demo-ready v2 can be limited to:
-- `GET_VERSION`
+The current framed protocol implements:
+- `GET_PROTOCOL_INFO`
 - `GET_SUMMARY_STATUS`
-- `SET_RAIL_STATE`
-- `PI_CONTROL`
-- `GET_FAULT_STATUS`
-- `CLEAR_LATCHED_FAULTS`
-- `BOOT_EVENT`
-- `FAULT_EVENT`
+- `GET_RESET_INFO`
+- `GET_OUTPUT_STATE`
+- `SET_OUTPUT_STATE`
 
 That is enough to support:
 - stable bring-up
 - visible SOH
 - reliable command acknowledgement
-- credible EPS supervision for the demo
+- direct output control for the demo path
 
 ## Practical Guidance For Follow-On Work
 

@@ -1,0 +1,280 @@
+# PDU Protocol ICD
+
+## Purpose
+
+This document defines the fresh framed UART protocol for the Artemis PDU MCU.
+
+This protocol replaces the older newline-terminated ASCII-offset packet scheme. Backward compatibility with the old protocol is intentionally not preserved.
+
+## Design Goals
+
+- Robust UART framing
+- Explicit request/response transactions
+- CRC-protected payloads
+- Small fixed-width binary fields only
+- Mission-facing logical outputs instead of raw GPIO choreography
+- Enough functionality for demo bring-up, output control, and SOH visibility
+
+## Quick Glossary
+
+- `SOF`: start of frame. A marker byte that tells the receiver where a new message begins.
+- `CRC`: cyclic redundancy check. A checksum used to detect corrupted bytes.
+- `opcode`: operation code. The specific command being requested.
+- `seq`: sequence number. Chosen by the host and echoed by the PDU in the response.
+- `payload`: the command-specific data bytes inside the frame.
+- `ICD`: interface control document. The formal description of the wire protocol.
+
+## Transport
+
+- Physical link: UART
+- Byte order: little-endian for multi-byte numeric payload fields
+- Framing: fixed start-of-frame byte plus explicit payload length
+- Integrity check: CRC-16/CCITT over header and payload
+
+## Frame Format
+
+Each frame is:
+
+| Byte | Field | Size | Notes |
+|------|-------|------|-------|
+| 0 | `sof` | 1 | Always `0xA5` |
+| 1 | `version` | 1 | Currently `0x02` |
+| 2 | `msg_type` | 1 | `0=request`, `1=response`, `2=event` |
+| 3 | `opcode` | 1 | Command or event ID |
+| 4 | `seq` | 1 | Sequence number echoed in the response |
+| 5 | `status` | 1 | In requests set to `0`; in responses contains the status code |
+| 6 | `payload_len` | 1 | Number of payload bytes |
+| 7..N | `payload` | variable | `payload_len` bytes |
+| N+1..N+2 | `crc16` | 2 | CRC-16/CCITT over bytes `1..N` |
+
+Notes:
+- `sof` is not included in the CRC.
+- The parser resynchronizes if it sees a new `0xA5` while already inside a partial frame.
+- The current firmware only emits `response` frames. `event` is reserved for later use.
+
+## Status Codes
+
+| Value | Name | Meaning |
+|------|------|---------|
+| `0x00` | `OK` | Request accepted and processed |
+| `0x01` | `BAD_OPCODE` | Unknown opcode |
+| `0x02` | `BAD_LENGTH` | Payload length did not match the opcode contract |
+| `0x03` | `BAD_PARAM` | Payload field value was invalid |
+| `0x04` | `HW_FAULT` | Reserved for hardware-side command rejection |
+| `0x05` | `NOT_IMPLEMENTED` | Reserved for future use |
+
+## Output IDs
+
+The protocol exposes logical outputs, not raw pin names.
+
+| ID | Name | Meaning |
+|----|------|---------|
+| `0x01` | `PDU_OUTPUT_3V3_1` | 3.3 V rail 1 |
+| `0x02` | `PDU_OUTPUT_3V3_2` | 3.3 V rail 2 |
+| `0x03` | `PDU_OUTPUT_5V_1` | 5 V rail 1 |
+| `0x04` | `PDU_OUTPUT_5V_2` | 5 V rail 2 |
+| `0x05` | `PDU_OUTPUT_5V_3` | 5 V rail 3 |
+| `0x06` | `PDU_OUTPUT_5V_4` | 5 V rail 4 |
+| `0x07` | `PDU_OUTPUT_12V` | 12 V logical rail |
+| `0x08` | `PDU_OUTPUT_VBATT` | Battery bus enable |
+| `0x09` | `PDU_OUTPUT_BURN1` | Burn-wire channel 1 |
+| `0x0A` | `PDU_OUTPUT_BURN2` | Burn-wire channel 2 |
+| `0x0B` | `PDU_OUTPUT_HBRIDGE1` | H-bridge / torque path 1 |
+| `0x0C` | `PDU_OUTPUT_HBRIDGE2` | H-bridge / torque path 2 |
+| `0xFF` | `PDU_OUTPUT_ALL` | Broadcast target for all outputs |
+
+Important implementation notes:
+- `PDU_OUTPUT_12V` is composite and currently maps to both `SW_5V_EN4` and `SW_12V_EN1`.
+- `PDU_OUTPUT_BURN1` and `PDU_OUTPUT_BURN2` both depend on `BURN_5V`.
+- `PDU_OUTPUT_HBRIDGE1` and `PDU_OUTPUT_HBRIDGE2` are composite states across multiple pins.
+
+## Supported Opcodes
+
+### `0x01 GET_PROTOCOL_INFO`
+
+Request payload:
+- none
+
+Response payload:
+
+| Byte | Field |
+|------|-------|
+| 0 | protocol version |
+| 1 | capability bitmap |
+| 2 | max payload length |
+| 3 | output count |
+| 4 | firmware major |
+| 5 | firmware minor |
+| 6 | firmware patch |
+
+Capability bitmap:
+- bit 0: CRC-16 present
+- bit 1: sequence/ack pattern supported
+- bit 2: reset info supported
+- bit 3: summary status supported
+
+### `0x02 GET_SUMMARY_STATUS`
+
+Request payload:
+- none
+
+Response payload:
+
+| Byte | Field |
+|------|-------|
+| 0..1 | output enable bitmap |
+| 2 | reset cause (`RSTC_RCAUSE`) |
+| 3 | fault bitmap |
+| 4..7 | uptime seconds |
+| 8 | capability bitmap |
+
+Current implementation notes:
+- `fault bitmap` is currently always `0`.
+- `uptime seconds` is derived from the running RTC timer.
+- The output bitmap bit order matches the output-ID table above, excluding `0xFF`.
+
+Bitmap order:
+- bit 0 = `3V3_1`
+- bit 1 = `3V3_2`
+- bit 2 = `5V_1`
+- bit 3 = `5V_2`
+- bit 4 = `5V_3`
+- bit 5 = `5V_4`
+- bit 6 = `12V`
+- bit 7 = `VBATT`
+- bit 8 = `BURN1`
+- bit 9 = `BURN2`
+- bit 10 = `HBRIDGE1`
+- bit 11 = `HBRIDGE2`
+
+### `0x03 GET_RESET_INFO`
+
+Request payload:
+- none
+
+Response payload:
+
+| Byte | Field |
+|------|-------|
+| 0 | reset cause (`RSTC_RCAUSE`) |
+
+### `0x10 GET_OUTPUT_STATE`
+
+Request payload:
+
+| Byte | Field |
+|------|-------|
+| 0 | output ID or `0xFF` for all |
+
+Response payload for a single output:
+
+| Byte | Field |
+|------|-------|
+| 0 | output ID |
+| 1 | applied/measured state (`0` or `1`) |
+
+Response payload for `PDU_OUTPUT_ALL`:
+
+| Byte | Field |
+|------|-------|
+| 0 | `0xFF` |
+| 1 | output count |
+| 2..13 | output states in bitmap/output-ID order |
+
+### `0x11 SET_OUTPUT_STATE`
+
+Request payload:
+
+| Byte | Field |
+|------|-------|
+| 0 | output ID or `0xFF` for all |
+| 1 | desired state (`0=disable`, `1=enable`) |
+
+Response payload:
+- same shape as `GET_OUTPUT_STATE`
+
+This opcode responds with post-command state, not just an ACK bit.
+
+## Current Firmware Scope
+
+The current firmware implements:
+- protocol framing and CRC validation
+- request/response sequencing
+- protocol info query
+- summary status query
+- reset cause query
+- single-output state query
+- all-output state query
+- single-output state set
+- all-output state set
+
+The current firmware does not yet implement:
+- asynchronous event frames
+- charger control/state
+- Pi power/reset supervision commands
+- latched-fault reporting beyond the reserved summary field
+- heater abstractions separate from burn-wire channels
+
+## Error Handling Rules
+
+- A valid request with an unknown opcode returns `BAD_OPCODE`.
+- A valid request with the wrong payload length returns `BAD_LENGTH`.
+- A valid request with an invalid output ID or invalid state value returns `BAD_PARAM`.
+- A frame with bad CRC is ignored.
+- A frame with the wrong protocol version returns `BAD_PARAM`.
+- A frame with a message type other than `request` is ignored by the current firmware.
+
+## Example Transactions
+
+### Example: `GET_PROTOCOL_INFO`
+
+Request:
+- `msg_type = 0`
+- `opcode = 0x01`
+- `seq = 0x10`
+- `status = 0x00`
+- `payload_len = 0`
+
+Response:
+- `msg_type = 1`
+- `opcode = 0x01`
+- `seq = 0x10`
+- `status = 0x00`
+- payload contains protocol and firmware metadata
+
+### Example: Enable `5V_1`
+
+Request payload:
+- byte 0 = `0x03`
+- byte 1 = `0x01`
+
+Response payload:
+- byte 0 = `0x03`
+- byte 1 = measured state after command
+
+### Example: Read all output states
+
+Request payload:
+- byte 0 = `0xFF`
+
+Response payload:
+- byte 0 = `0xFF`
+- byte 1 = `12`
+- bytes 2..13 = the 12 current output states
+
+## Implementation References
+
+- Protocol constants: [src/pdu_protocol_v2.h](/Users/sozodennis/Developer/artemis-cubesat-pdu-firmware/src/pdu_protocol_v2.h:1)
+- Parser and handlers: [src/pdu_packet.c](/Users/sozodennis/Developer/artemis-cubesat-pdu-firmware/src/pdu_packet.c:1)
+- UART byte ingress path: [src/app.c](/Users/sozodennis/Developer/artemis-cubesat-pdu-firmware/src/app.c:153)
+
+## Migration Guidance For The Controller Side
+
+- Treat this ICD as the source of truth for the new protocol.
+- Do not reuse the old ASCII-offset packet logic.
+- Implement CRC validation and sequence matching on the host side.
+- Start by integrating these calls in order:
+  1. `GET_PROTOCOL_INFO`
+  2. `GET_SUMMARY_STATUS`
+  3. `SET_OUTPUT_STATE`
+  4. `GET_OUTPUT_STATE`

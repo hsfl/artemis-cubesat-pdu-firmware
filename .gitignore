@@ -8,6 +8,8 @@ nbproject/Makefile-*
 nbproject/private/
 
 # IDE config and cache
+node_modules/
+__pycache__/
 *.orig
 *.swp
 *.swo
