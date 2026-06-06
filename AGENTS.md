@@ -8,10 +8,10 @@ This repository contains Artemis CubeSat PDU firmware for a Microchip ATSAME51 M
 
 - `src/main.c`: Harmony entry point. Calls `SYS_Initialize(NULL)`, optionally prints the firmware version, then loops on `SYS_Tasks()`.
 - `src/config/default/tasks.c`: Creates the FreeRTOS tasks for `SYS_FS`, `DRV_SDSPI`, the watchdog, and `APP_Tasks`, then starts the scheduler.
-- `src/app.c` / `src/app.h`: Main handwritten application logic. Handles startup GPIO state, UART polling, RTC/I2C init, and optional FATFS helpers. `APP_Tasks()` currently only polls `USART_READ()`.
+- `src/app.c` / `src/app.h`: Main handwritten application logic. Applies safe startup GPIO defaults, sets the status LED, and polls UART. `APP_Tasks()` currently only polls `USART_READ()`.
 - `src/pdu_packet.c` / `src/pdu_packet.h`: Active framed protocol parser/encoder and GPIO state control for output commands and telemetry.
 - `src/pdu_protocol_v2.h`: Current local protocol definition for framed UART communication with explicit opcodes, output IDs, and status codes.
-- `src/artemis-cubesat-protocols/pdu/pdu_protocol.h`: Shared protocol header, tracked as a Git submodule. This is the on-wire contract source of truth unless a task explicitly says otherwise.
+- `src/artemis-cubesat-protocols/pdu/pdu_protocol.h`: Legacy shared protocol header, tracked as a Git submodule. It is retained for reference but is not the active v2 runtime contract.
 - `src/config/default/`: Harmony-generated configuration, peripheral drivers, system services, and `definitions.h`.
 - `ArtemisPDU.X/`: MPLAB X project metadata, generated makefiles, and MCC/Harmony configuration snapshots.
 - `src/packs/`, `src/third_party/`: Vendor/device pack and third-party code.
@@ -29,23 +29,23 @@ This repository contains Artemis CubeSat PDU firmware for a Microchip ATSAME51 M
   - `ArtemisPDU.X/nbproject/`
   - `ArtemisPDU.X/ArtemisPDU_default*/`
   - Harmony/MCC manifest or YAML files
-- If a change affects the command protocol, keep `src/pdu_packet.c` behavior aligned with `src/artemis-cubesat-protocols/pdu/pdu_protocol.h`.
+- If a change affects the command protocol, keep `src/pdu_packet.c`, `src/pdu_protocol_v2.h`, and `PDU_PROTOCOL_ICD.md` aligned.
 
 ## Firmware Behavior Notes
 
 - Runtime path:
   - `src/main.c` -> `SYS_Tasks()` -> `lAPP_Tasks()` -> `APP_Tasks()` -> `USART_READ()` -> `pdu_protocol_process_byte()`
-- `APP_Initialize()` calls `disableGPIOs()` on boot, then initializes RTC and SERCOM4 I2C, and sets the LED.
-- `APP_Tasks()` is a tight polling loop; there is no delay in the app task itself.
+- `APP_Initialize()` calls `disableAllGPIOs()` on boot, then sets the LED.
+- `APP_Tasks()` polls UART once per app-task iteration; `lAPP_Tasks()` adds a 1 ms FreeRTOS delay between iterations.
 - `USART_READ()` feeds bytes into the framed protocol parser in `src/pdu_packet.c`.
-- The legacy `read_CMD()` helper still exists in `src/app.c`, but it is no longer in the active runtime path.
+- Legacy text-command and app-level SD-card demo helpers were removed from `src/app.c`; generated Harmony SD/FATFS support remains configured for future use.
 - Several logical outputs are composite, not single pins:
   - `SW_12V` uses both `SW_5V_EN4` and `SW_12V_EN1`
+  - `SW_5V_EN4` is reserved as the 5 V input to the 12 V switch regulator, per the manual: "Provide 5V power to the 12V Switch Regulator. The 12V Switch Regulator circuit converts the input 5V to output 12V for the end-user to program and utilize."
   - Burn-wire state depends on `BURN_5V` plus `BURN1_EN` and/or `BURN2_EN`
   - H-bridge states are combinations of `FAULT*`, `IN*`, `TRQ*`, and `SLEEP*`
-- Startup semantics are not purely "all off":
-  - `disableGPIOs()` clears most rails, but it sets `BURN1_EN`
-  - verify active-high/active-low intent from `definitions.h` and board behavior before changing any GPIO default
+- Startup uses the same `disableAllGPIOs()` helper as protocol-level all-off behavior.
+- Verify active-high/active-low intent from `definitions.h` and board behavior before changing any GPIO default.
 - The active wire protocol is the framed binary protocol defined in `src/pdu_protocol_v2.h` and described in `PDU_PROTOCOL_ICD.md`.
 - The older ASCII-offset shared header under `src/artemis-cubesat-protocols/` is no longer the active runtime contract for this firmware checkout.
 - Packet layout still matters:

@@ -52,6 +52,7 @@
 
 #include "configuration.h"
 #include "definitions.h"
+#include "pdu_packet.h"
 #include "sys_tasks.h"
 
 // *****************************************************************************
@@ -69,6 +70,18 @@ static void lWatchdogTask(void *pvParameters)
 
     while (true)
     {
+        if (pdu_software_reset_requested())
+        {
+            /*
+             * SOFTWARE_RESET intentionally stops servicing both watchdog paths.
+             * The external watchdog should reset the board first; if not, the
+             * internal SAME51 watchdog will still reset the MCU.
+             */
+            WDT_WDI_Clear();
+            vTaskDelay(pdMS_TO_TICKS(WATCHDOG_PERIOD_MS));
+            continue;
+        }
+
         /* 1. clear internal SAME51 watchdog */
         WDT_Clear();
 
@@ -110,6 +123,7 @@ static void lAPP_Tasks(void *pvParameters)
     while (true)
     {
         APP_Tasks();
+        vTaskDelay(pdMS_TO_TICKS(1U));
     }
 }
 
