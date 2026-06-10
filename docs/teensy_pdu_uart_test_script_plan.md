@@ -6,6 +6,11 @@ Create a small host-side Python script that manually tests the PDU v2 framed UAR
 
 The script should let an operator send individual commands, inspect framed responses, and verify rails, burn-wire commands, torque-coil commands, reset info, and parser behavior.
 
+Note: a student-friendly Teensy manual test sketch now exists at
+`teensy/pdu_comms_test/pdu_comms_test.ino`. Build and use that first for direct
+Teensy-to-PDU checkout. This Python tool is still useful later for host-side
+automation and scripted regression tests.
+
 ## Constraints
 
 - Do not modify firmware.
@@ -75,14 +80,15 @@ python tools/pdu_uart_cli.py --port /dev/tty.usbmodemXXXX raw 10 03
 Default serial settings should be configurable:
 
 ```text
---baud 115200
+--baud 9600
 --timeout 1.0
 --seq 0
 --hex
 --verbose
 ```
 
-If the actual project UART baud differs, make `--baud` easy to override.
+The current generated PDU UART configuration is `9600` baud. Keep `--baud`
+easy to override in case the Harmony UART config changes later.
 
 ## Required Commands
 
@@ -341,4 +347,3 @@ Parser robustness test:
 - Burn command refuses to run without `--i-understand`.
 - Output decoding names match `PDU_PROTOCOL_ICD.md`.
 - Script does not require firmware changes.
-
