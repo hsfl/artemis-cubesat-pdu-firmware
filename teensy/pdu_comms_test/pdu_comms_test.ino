@@ -15,74 +15,23 @@
 */
 
 #include <Arduino.h>
+#include "pdu_protocol_v2.h"
 
 const uint32_t CONSOLE_BAUD = 9600;
 const uint32_t PDU_UART_BAUD = 9600;
 
 #define PDU_UART Serial1
 
-// Protocol framing.
-const uint8_t PDU_SOF = 0xA5;
-const uint8_t PDU_VERSION = 2;
-const uint8_t PDU_MAX_PAYLOAD_LEN = 96;
-const uint8_t PDU_MSG_REQUEST = 0;
-const uint8_t PDU_MSG_RESPONSE = 1;
-
-// Status codes.
-const uint8_t PDU_STATUS_OK = 0;
-const uint8_t PDU_STATUS_BAD_OPCODE = 1;
-const uint8_t PDU_STATUS_BAD_LENGTH = 2;
-const uint8_t PDU_STATUS_BAD_PARAM = 3;
-const uint8_t PDU_STATUS_HW_FAULT = 4;
-const uint8_t PDU_STATUS_NOT_IMPLEMENTED = 5;
-const uint8_t PDU_STATUS_BUSY = 6;
-
-// Opcodes.
-const uint8_t OP_PING = 0x00;
-const uint8_t OP_GET_PROTOCOL_INFO = 0x01;
-const uint8_t OP_GET_SUMMARY_STATUS = 0x02;
-const uint8_t OP_GET_RESET_INFO = 0x03;
-const uint8_t OP_HELP = 0x04;
-const uint8_t OP_GET_OUTPUT_STATE = 0x10;
-const uint8_t OP_SET_OUTPUT_STATE = 0x11;
-const uint8_t OP_POWER_CYCLE_OUTPUT = 0x12;
-const uint8_t OP_FIRE_BURN_WIRE = 0x13;
-const uint8_t OP_SET_TORQUE_COIL = 0x14;
-const uint8_t OP_GET_TORQUE_COIL = 0x15;
-const uint8_t OP_SOFTWARE_RESET = 0x20;
-
-// Output IDs.
-const uint8_t OUT_3V3_1 = 0x01;
-const uint8_t OUT_3V3_2 = 0x02;
-const uint8_t OUT_5V_1 = 0x03;
-const uint8_t OUT_5V_2 = 0x04;
-const uint8_t OUT_5V_3 = 0x05;
-const uint8_t OUT_12V = 0x07;
-const uint8_t OUT_VBATT = 0x08;
-const uint8_t OUT_BURN1 = 0x09;
-const uint8_t OUT_BURN2 = 0x0A;
-const uint8_t OUT_ALL = 0xFF;
-
-const uint16_t BURN_ARM_TOKEN = 0xB142;
-
-// Torque fields.
-const uint8_t TORQUE_COAST = 0;
-const uint8_t TORQUE_FORWARD = 1;
-const uint8_t TORQUE_REVERSE = 2;
-const uint8_t TORQUE_BRAKE = 3;
-const uint8_t TORQUE_CURRENT_100 = 0;
-const uint8_t TORQUE_CURRENT_50 = 1;
-
 const uint8_t OUTPUT_ORDER[] = {
-  OUT_3V3_1,
-  OUT_3V3_2,
-  OUT_5V_1,
-  OUT_5V_2,
-  OUT_5V_3,
-  OUT_12V,
-  OUT_VBATT,
-  OUT_BURN1,
-  OUT_BURN2,
+  PDU_OUTPUT_3V3_1,
+  PDU_OUTPUT_3V3_2,
+  PDU_OUTPUT_5V_1,
+  PDU_OUTPUT_5V_2,
+  PDU_OUTPUT_5V_3,
+  PDU_OUTPUT_12V,
+  PDU_OUTPUT_VBATT,
+  PDU_OUTPUT_BURN1,
+  PDU_OUTPUT_BURN2,
 };
 
 const size_t OUTPUT_COUNT = sizeof(OUTPUT_ORDER) / sizeof(OUTPUT_ORDER[0]);
@@ -94,10 +43,11 @@ struct PduFrame {
   uint8_t seq;
   uint8_t status;
   uint8_t payloadLen;
-  uint8_t payload[PDU_MAX_PAYLOAD_LEN];
+  uint8_t payload[PDU_V2_MAX_PAYLOAD_LEN];
 };
 
 uint8_t nextSeq = 1;
+bool debugFrames = false;
 
 uint16_t crc16Ccitt(const uint8_t *data, size_t len) {
   uint16_t crc = 0xFFFF;
@@ -168,56 +118,72 @@ void printPayload(const uint8_t *data, uint8_t len) {
   }
 }
 
+void printBytes(const char *label, const uint8_t *data, size_t len) {
+  Serial.print(label);
+  Serial.print(F(" ["));
+  Serial.print(len);
+  Serial.print(F("]: "));
+
+  for (size_t i = 0; i < len; i++) {
+    printHexByte(data[i]);
+    if (i + 1 < len) {
+      Serial.print(' ');
+    }
+  }
+
+  Serial.println();
+}
+
 const char *statusName(uint8_t status) {
   switch (status) {
-    case PDU_STATUS_OK: return "OK";
-    case PDU_STATUS_BAD_OPCODE: return "BAD_OPCODE";
-    case PDU_STATUS_BAD_LENGTH: return "BAD_LENGTH";
-    case PDU_STATUS_BAD_PARAM: return "BAD_PARAM";
-    case PDU_STATUS_HW_FAULT: return "HW_FAULT";
-    case PDU_STATUS_NOT_IMPLEMENTED: return "NOT_IMPLEMENTED";
-    case PDU_STATUS_BUSY: return "BUSY";
+    case PDU_V2_STATUS_OK: return "OK";
+    case PDU_V2_STATUS_BAD_OPCODE: return "BAD_OPCODE";
+    case PDU_V2_STATUS_BAD_LENGTH: return "BAD_LENGTH";
+    case PDU_V2_STATUS_BAD_PARAM: return "BAD_PARAM";
+    case PDU_V2_STATUS_HW_FAULT: return "HW_FAULT";
+    case PDU_V2_STATUS_NOT_IMPLEMENTED: return "NOT_IMPLEMENTED";
+    case PDU_V2_STATUS_BUSY: return "BUSY";
     default: return "UNKNOWN";
   }
 }
 
 const char *outputName(uint8_t outputId) {
   switch (outputId) {
-    case OUT_3V3_1: return "3v3_1";
-    case OUT_3V3_2: return "3v3_2";
-    case OUT_5V_1: return "5v1";
-    case OUT_5V_2: return "5v2";
-    case OUT_5V_3: return "5v3";
-    case OUT_12V: return "12v";
-    case OUT_VBATT: return "vbatt";
-    case OUT_BURN1: return "burn1";
-    case OUT_BURN2: return "burn2";
-    case OUT_ALL: return "all";
+    case PDU_OUTPUT_3V3_1: return "3v3_1";
+    case PDU_OUTPUT_3V3_2: return "3v3_2";
+    case PDU_OUTPUT_5V_1: return "5v1";
+    case PDU_OUTPUT_5V_2: return "5v2";
+    case PDU_OUTPUT_5V_3: return "5v3";
+    case PDU_OUTPUT_12V: return "12v";
+    case PDU_OUTPUT_VBATT: return "vbatt";
+    case PDU_OUTPUT_BURN1: return "burn1";
+    case PDU_OUTPUT_BURN2: return "burn2";
+    case PDU_V2_OUTPUT_ALL: return "all";
     default: return "unknown";
   }
 }
 
 const char *modeName(uint8_t mode) {
   switch (mode) {
-    case TORQUE_COAST: return "coast";
-    case TORQUE_FORWARD: return "forward";
-    case TORQUE_REVERSE: return "reverse";
-    case TORQUE_BRAKE: return "brake";
+    case PDU_TORQUE_MODE_COAST: return "coast";
+    case PDU_TORQUE_MODE_FORWARD: return "forward";
+    case PDU_TORQUE_MODE_REVERSE: return "reverse";
+    case PDU_TORQUE_MODE_BRAKE: return "brake";
     default: return "unknown";
   }
 }
 
 bool sendRequest(uint8_t opcode, uint8_t seq, const uint8_t *payload, uint8_t payloadLen) {
-  if (payloadLen > PDU_MAX_PAYLOAD_LEN) {
+  if (payloadLen > PDU_V2_MAX_PAYLOAD_LEN) {
     return false;
   }
 
-  uint8_t frame[1 + 6 + PDU_MAX_PAYLOAD_LEN + 2];
+  uint8_t frame[1 + 6 + PDU_V2_MAX_PAYLOAD_LEN + 2];
   size_t index = 0;
 
-  frame[index++] = PDU_SOF;
-  frame[index++] = PDU_VERSION;
-  frame[index++] = PDU_MSG_REQUEST;
+  frame[index++] = PDU_V2_SOF;
+  frame[index++] = PDU_V2_VERSION;
+  frame[index++] = PDU_V2_MSG_REQUEST;
   frame[index++] = opcode;
   frame[index++] = seq;
   frame[index++] = 0;
@@ -231,6 +197,10 @@ bool sendRequest(uint8_t opcode, uint8_t seq, const uint8_t *payload, uint8_t pa
   frame[index++] = (uint8_t)(crc & 0xFF);
   frame[index++] = (uint8_t)(crc >> 8);
 
+  if (debugFrames) {
+    printBytes("TX", frame, index);
+  }
+
   PDU_UART.write(frame, index);
   PDU_UART.flush();
   return true;
@@ -243,12 +213,18 @@ bool readResponse(PduFrame &frame, uint8_t expectedOpcode, uint8_t expectedSeq, 
   // Wait for SOF. Bytes before SOF are ignored.
   while (true) {
     if ((millis() - startMs) >= timeoutMs) {
+      Serial.println(F("RX timeout: no SOF byte 0xA5 received."));
       return false;
     }
 
     if (PDU_UART.available() > 0) {
       byteValue = (uint8_t)PDU_UART.read();
-      if (byteValue == PDU_SOF) {
+      if (debugFrames && byteValue != PDU_V2_SOF) {
+        Serial.print(F("RX ignored byte before SOF: 0x"));
+        printHexByte(byteValue);
+        Serial.println();
+      }
+      if (byteValue == PDU_V2_SOF) {
         break;
       }
     }
@@ -257,6 +233,9 @@ bool readResponse(PduFrame &frame, uint8_t expectedOpcode, uint8_t expectedSeq, 
   uint8_t header[6];
   for (uint8_t i = 0; i < sizeof(header); i++) {
     if (!readByteWithTimeout(header[i], timeoutMs)) {
+      Serial.print(F("RX timeout: partial header, got "));
+      Serial.print(i);
+      Serial.println(F(" of 6 bytes after SOF."));
       return false;
     }
   }
@@ -268,25 +247,44 @@ bool readResponse(PduFrame &frame, uint8_t expectedOpcode, uint8_t expectedSeq, 
   frame.status = header[4];
   frame.payloadLen = header[5];
 
-  if (frame.payloadLen > PDU_MAX_PAYLOAD_LEN) {
+  if (frame.payloadLen > PDU_V2_MAX_PAYLOAD_LEN) {
+    Serial.print(F("RX bad payload length: "));
+    Serial.println(frame.payloadLen);
     return false;
   }
 
   for (uint8_t i = 0; i < frame.payloadLen; i++) {
     if (!readByteWithTimeout(frame.payload[i], timeoutMs)) {
+      Serial.print(F("RX timeout: partial payload, got "));
+      Serial.print(i);
+      Serial.print(F(" of "));
+      Serial.print(frame.payloadLen);
+      Serial.println(F(" bytes."));
       return false;
     }
   }
 
   uint8_t crcBytes[2];
   if (!readByteWithTimeout(crcBytes[0], timeoutMs)) {
+    Serial.println(F("RX timeout: missing CRC byte 0."));
     return false;
   }
   if (!readByteWithTimeout(crcBytes[1], timeoutMs)) {
+    Serial.println(F("RX timeout: missing CRC byte 1."));
     return false;
   }
 
-  uint8_t crcInput[6 + PDU_MAX_PAYLOAD_LEN];
+  if (debugFrames) {
+    uint8_t rawFrame[1 + 6 + PDU_V2_MAX_PAYLOAD_LEN + 2];
+    rawFrame[0] = PDU_V2_SOF;
+    memcpy(&rawFrame[1], header, sizeof(header));
+    memcpy(&rawFrame[7], frame.payload, frame.payloadLen);
+    rawFrame[7 + frame.payloadLen] = crcBytes[0];
+    rawFrame[8 + frame.payloadLen] = crcBytes[1];
+    printBytes("RX", rawFrame, 9 + frame.payloadLen);
+  }
+
+  uint8_t crcInput[6 + PDU_V2_MAX_PAYLOAD_LEN];
   memcpy(crcInput, header, sizeof(header));
   memcpy(&crcInput[6], frame.payload, frame.payloadLen);
 
@@ -301,11 +299,23 @@ bool readResponse(PduFrame &frame, uint8_t expectedOpcode, uint8_t expectedSeq, 
     return false;
   }
 
-  if (frame.version != PDU_VERSION || frame.msgType != PDU_MSG_RESPONSE) {
+  if (frame.version != PDU_V2_VERSION || frame.msgType != PDU_V2_MSG_RESPONSE) {
+    Serial.print(F("RX wrong frame type/version. version="));
+    Serial.print(frame.version);
+    Serial.print(F(" msg_type="));
+    Serial.println(frame.msgType);
     return false;
   }
 
   if (frame.opcode != expectedOpcode || frame.seq != expectedSeq) {
+    Serial.print(F("RX response mismatch. opcode=0x"));
+    printHexByte(frame.opcode);
+    Serial.print(F(" expected=0x"));
+    printHexByte(expectedOpcode);
+    Serial.print(F(" seq="));
+    Serial.print(frame.seq);
+    Serial.print(F(" expected_seq="));
+    Serial.println(expectedSeq);
     return false;
   }
 
@@ -322,7 +332,7 @@ bool requestResponse(uint8_t opcode, const uint8_t *payload, uint8_t payloadLen,
   }
 
   if (!readResponse(response, opcode, seq, 1000)) {
-    Serial.println(F("No valid response from PDU."));
+    Serial.println(F("No valid response from PDU. Check wiring, baud, PDU power, and PDU firmware."));
     return false;
   }
 
@@ -362,16 +372,16 @@ String tokenAt(String line, uint8_t index) {
 bool parseOutputId(String text, uint8_t &outputId) {
   text.toLowerCase();
 
-  if (text == "3v3_1" || text == "sw_3v3_1") outputId = OUT_3V3_1;
-  else if (text == "3v3_2" || text == "sw_3v3_2") outputId = OUT_3V3_2;
-  else if (text == "5v1" || text == "5v_1" || text == "sw_5v_1") outputId = OUT_5V_1;
-  else if (text == "5v2" || text == "5v_2" || text == "sw_5v_2") outputId = OUT_5V_2;
-  else if (text == "5v3" || text == "5v_3" || text == "sw_5v_3") outputId = OUT_5V_3;
-  else if (text == "12v" || text == "sw_12v") outputId = OUT_12V;
-  else if (text == "vbatt") outputId = OUT_VBATT;
-  else if (text == "burn1") outputId = OUT_BURN1;
-  else if (text == "burn2") outputId = OUT_BURN2;
-  else if (text == "all") outputId = OUT_ALL;
+  if (text == "3v3_1" || text == "sw_3v3_1") outputId = PDU_OUTPUT_3V3_1;
+  else if (text == "3v3_2" || text == "sw_3v3_2") outputId = PDU_OUTPUT_3V3_2;
+  else if (text == "5v1" || text == "5v_1" || text == "sw_5v_1") outputId = PDU_OUTPUT_5V_1;
+  else if (text == "5v2" || text == "5v_2" || text == "sw_5v_2") outputId = PDU_OUTPUT_5V_2;
+  else if (text == "5v3" || text == "5v_3" || text == "sw_5v_3") outputId = PDU_OUTPUT_5V_3;
+  else if (text == "12v" || text == "sw_12v") outputId = PDU_OUTPUT_12V;
+  else if (text == "vbatt") outputId = PDU_OUTPUT_VBATT;
+  else if (text == "burn1") outputId = PDU_OUTPUT_BURN1;
+  else if (text == "burn2") outputId = PDU_OUTPUT_BURN2;
+  else if (text == "all") outputId = PDU_V2_OUTPUT_ALL;
   else return false;
 
   return true;
@@ -396,10 +406,10 @@ bool parseOnOff(String text, uint8_t &state) {
 bool parseTorqueMode(String text, uint8_t &mode) {
   text.toLowerCase();
 
-  if (text == "coast" || text == "off") mode = TORQUE_COAST;
-  else if (text == "forward" || text == "fwd") mode = TORQUE_FORWARD;
-  else if (text == "reverse" || text == "rev") mode = TORQUE_REVERSE;
-  else if (text == "brake") mode = TORQUE_BRAKE;
+  if (text == "coast" || text == "off") mode = PDU_TORQUE_MODE_COAST;
+  else if (text == "forward" || text == "fwd") mode = PDU_TORQUE_MODE_FORWARD;
+  else if (text == "reverse" || text == "rev") mode = PDU_TORQUE_MODE_REVERSE;
+  else if (text == "brake") mode = PDU_TORQUE_MODE_BRAKE;
   else return false;
 
   return true;
@@ -408,8 +418,8 @@ bool parseTorqueMode(String text, uint8_t &mode) {
 bool parseTorqueCurrent(String text, uint8_t &current) {
   text.toLowerCase();
 
-  if (text == "100" || text == "100%") current = TORQUE_CURRENT_100;
-  else if (text == "50" || text == "50%") current = TORQUE_CURRENT_50;
+  if (text == "100" || text == "100%") current = PDU_TORQUE_CURRENT_100;
+  else if (text == "50" || text == "50%") current = PDU_TORQUE_CURRENT_50;
   else return false;
 
   return true;
@@ -430,6 +440,9 @@ void printHelp() {
   Serial.println(F("Artemis PDU v2 Teensy Comms Test"));
   Serial.println(F("Commands:"));
   Serial.println(F("  help"));
+  Serial.println(F("  debug <on|off>"));
+  Serial.println(F("  sniff [ms]"));
+  Serial.println(F("  loopback"));
   Serial.println(F("  pdu-help"));
   Serial.println(F("  ping"));
   Serial.println(F("  info"));
@@ -449,7 +462,7 @@ void printHelp() {
 }
 
 void printOutputStatePayload(const PduFrame &response) {
-  if (response.status != PDU_STATUS_OK) {
+  if (response.status != PDU_V2_STATUS_OK) {
     return;
   }
 
@@ -458,7 +471,7 @@ void printOutputStatePayload(const PduFrame &response) {
     return;
   }
 
-  if (response.payload[0] == OUT_ALL) {
+  if (response.payload[0] == PDU_V2_OUTPUT_ALL) {
     uint8_t count = response.payload[1];
     Serial.println(F("All output states:"));
 
@@ -478,7 +491,7 @@ void printOutputStatePayload(const PduFrame &response) {
 }
 
 void printTorquePayload(const PduFrame &response) {
-  if (response.status != PDU_STATUS_OK) {
+  if (response.status != PDU_V2_STATUS_OK) {
     return;
   }
 
@@ -492,21 +505,101 @@ void printTorquePayload(const PduFrame &response) {
   Serial.print(F(": mode="));
   Serial.print(modeName(response.payload[1]));
   Serial.print(F(" current="));
-  Serial.print(response.payload[2] == TORQUE_CURRENT_50 ? F("50%") : F("100%"));
+  Serial.print(response.payload[2] == PDU_TORQUE_CURRENT_50 ? F("50%") : F("100%"));
   Serial.print(F(" driver="));
   Serial.print(response.payload[3] ? F("awake") : F("sleep"));
   Serial.print(F(" fault="));
   Serial.println(response.payload[4] ? F("yes") : F("no"));
 }
 
-void commandPing() {
-  PduFrame response;
+void commandDebug(String line) {
+  uint8_t state;
 
-  if (!requestResponse(OP_PING, nullptr, 0, response)) {
+  if (!parseOnOff(tokenAt(line, 1), state)) {
+    Serial.println(F("Usage: debug <on|off>"));
     return;
   }
 
-  if (response.status == PDU_STATUS_OK && response.payloadLen >= 1) {
+  debugFrames = (state != 0);
+  Serial.print(F("debug: "));
+  Serial.println(debugFrames ? F("on") : F("off"));
+}
+
+void commandSniff(String line) {
+  uint32_t durationMs = (uint32_t)tokenAt(line, 1).toInt();
+
+  if (durationMs == 0) {
+    durationMs = 3000;
+  }
+
+  Serial.print(F("Sniffing PDU UART RX for "));
+  Serial.print(durationMs);
+  Serial.println(F(" ms. Any bytes seen below are raw."));
+
+  uint32_t startMs = millis();
+  uint32_t count = 0;
+
+  while ((millis() - startMs) < durationMs) {
+    while (PDU_UART.available() > 0) {
+      uint8_t value = (uint8_t)PDU_UART.read();
+      printHexByte(value);
+      Serial.print(' ');
+      count++;
+
+      if ((count % 16) == 0) {
+        Serial.println();
+      }
+    }
+  }
+
+  if ((count % 16) != 0) {
+    Serial.println();
+  }
+
+  Serial.print(F("raw bytes received: "));
+  Serial.println(count);
+}
+
+void commandLoopback() {
+  const uint8_t testBytes[] = { 0xA5, 0x02, 0x55, 0x00, 0xFF };
+  uint8_t received[sizeof(testBytes)];
+  size_t receivedCount = 0;
+
+  clearPduRx();
+
+  Serial.println(F("Loopback test: disconnect PDU and jumper Teensy Serial1 TX to Serial1 RX."));
+  Serial.println(F("Sending test bytes on Serial1..."));
+
+  PDU_UART.write(testBytes, sizeof(testBytes));
+  PDU_UART.flush();
+
+  uint32_t startMs = millis();
+  while ((millis() - startMs) < 500 && receivedCount < sizeof(received)) {
+    if (PDU_UART.available() > 0) {
+      received[receivedCount++] = (uint8_t)PDU_UART.read();
+    }
+  }
+
+  printBytes("loopback expected", testBytes, sizeof(testBytes));
+  printBytes("loopback received", received, receivedCount);
+
+  if (receivedCount != sizeof(testBytes) ||
+      memcmp(testBytes, received, sizeof(testBytes)) != 0) {
+    Serial.println(F("loopback: FAIL"));
+    return;
+  }
+
+  Serial.println(F("loopback: PASS"));
+}
+
+void commandPing() {
+  PduFrame response;
+
+  if (!requestResponse(PDU_V2_OP_PING, nullptr, 0, response)) {
+    return;
+  }
+
+  if (response.status == PDU_V2_STATUS_OK && response.payloadLen >= 1) {
     Serial.print(F("protocol version: "));
     Serial.println(response.payload[0]);
   }
@@ -515,11 +608,11 @@ void commandPing() {
 void commandInfo() {
   PduFrame response;
 
-  if (!requestResponse(OP_GET_PROTOCOL_INFO, nullptr, 0, response)) {
+  if (!requestResponse(PDU_V2_OP_GET_PROTOCOL_INFO, nullptr, 0, response)) {
     return;
   }
 
-  if (response.status != PDU_STATUS_OK || response.payloadLen < 7) {
+  if (response.status != PDU_V2_STATUS_OK || response.payloadLen < 7) {
     return;
   }
 
@@ -543,11 +636,11 @@ void commandInfo() {
 void commandPduHelp() {
   PduFrame response;
 
-  if (!requestResponse(OP_HELP, nullptr, 0, response)) {
+  if (!requestResponse(PDU_V2_OP_HELP, nullptr, 0, response)) {
     return;
   }
 
-  if (response.status != PDU_STATUS_OK) {
+  if (response.status != PDU_V2_STATUS_OK) {
     return;
   }
 
@@ -561,11 +654,11 @@ void commandPduHelp() {
 void commandSummary() {
   PduFrame response;
 
-  if (!requestResponse(OP_GET_SUMMARY_STATUS, nullptr, 0, response)) {
+  if (!requestResponse(PDU_V2_OP_GET_SUMMARY_STATUS, nullptr, 0, response)) {
     return;
   }
 
-  if (response.status != PDU_STATUS_OK || response.payloadLen < 9) {
+  if (response.status != PDU_V2_STATUS_OK || response.payloadLen < 9) {
     return;
   }
 
@@ -600,11 +693,11 @@ void commandSummary() {
 void commandResetInfo() {
   PduFrame response;
 
-  if (!requestResponse(OP_GET_RESET_INFO, nullptr, 0, response)) {
+  if (!requestResponse(PDU_V2_OP_GET_RESET_INFO, nullptr, 0, response)) {
     return;
   }
 
-  if (response.status == PDU_STATUS_OK && response.payloadLen >= 1) {
+  if (response.status == PDU_V2_STATUS_OK && response.payloadLen >= 1) {
     Serial.print(F("reset cause: 0x"));
     printHexByte(response.payload[0]);
     Serial.println();
@@ -623,7 +716,7 @@ void commandGetOutput(String line) {
   uint8_t payload[] = { outputId };
   PduFrame response;
 
-  if (requestResponse(OP_GET_OUTPUT_STATE, payload, sizeof(payload), response)) {
+  if (requestResponse(PDU_V2_OP_GET_OUTPUT_STATE, payload, sizeof(payload), response)) {
     printOutputStatePayload(response);
   }
 }
@@ -640,7 +733,7 @@ void commandSetOutput(String line) {
   uint8_t payload[] = { outputId, state };
   PduFrame response;
 
-  if (requestResponse(OP_SET_OUTPUT_STATE, payload, sizeof(payload), response)) {
+  if (requestResponse(PDU_V2_OP_SET_OUTPUT_STATE, payload, sizeof(payload), response)) {
     printOutputStatePayload(response);
   }
 }
@@ -659,7 +752,7 @@ void commandPowerCycle(String line) {
   putLe16(&payload[1], offMs);
 
   PduFrame response;
-  if (requestResponse(OP_POWER_CYCLE_OUTPUT, payload, sizeof(payload), response)) {
+  if (requestResponse(PDU_V2_OP_POWER_CYCLE_OUTPUT, payload, sizeof(payload), response)) {
     printOutputStatePayload(response);
   }
 }
@@ -671,7 +764,7 @@ void commandBurn(String line) {
   armText.toLowerCase();
 
   if (!parseOutputId(tokenAt(line, 1), outputId) ||
-      (outputId != OUT_BURN1 && outputId != OUT_BURN2) ||
+      (outputId != PDU_OUTPUT_BURN1 && outputId != PDU_OUTPUT_BURN2) ||
       fireMs == 0 ||
       armText != "arm") {
     Serial.println(F("Usage: burn <burn1|burn2> <duration_ms> arm"));
@@ -681,10 +774,10 @@ void commandBurn(String line) {
   uint8_t payload[5];
   payload[0] = outputId;
   putLe16(&payload[1], fireMs);
-  putLe16(&payload[3], BURN_ARM_TOKEN);
+  putLe16(&payload[3], PDU_V2_BURN_ARM_TOKEN);
 
   PduFrame response;
-  if (requestResponse(OP_FIRE_BURN_WIRE, payload, sizeof(payload), response)) {
+  if (requestResponse(PDU_V2_OP_FIRE_BURN_WIRE, payload, sizeof(payload), response)) {
     printOutputStatePayload(response);
   }
 }
@@ -709,7 +802,7 @@ void commandSetTorque(String line) {
   putLe16(&payload[3], durationMs);
 
   PduFrame response;
-  if (requestResponse(OP_SET_TORQUE_COIL, payload, sizeof(payload), response)) {
+  if (requestResponse(PDU_V2_OP_SET_TORQUE_COIL, payload, sizeof(payload), response)) {
     printTorquePayload(response);
   }
 }
@@ -725,7 +818,7 @@ void commandGetTorque(String line) {
   uint8_t payload[] = { coil };
   PduFrame response;
 
-  if (requestResponse(OP_GET_TORQUE_COIL, payload, sizeof(payload), response)) {
+  if (requestResponse(PDU_V2_OP_GET_TORQUE_COIL, payload, sizeof(payload), response)) {
     printTorquePayload(response);
   }
 }
@@ -740,7 +833,7 @@ void commandSoftwareReset(String line) {
   }
 
   PduFrame response;
-  (void)requestResponse(OP_SOFTWARE_RESET, nullptr, 0, response);
+  (void)requestResponse(PDU_V2_OP_SOFTWARE_RESET, nullptr, 0, response);
 }
 
 void handleCommand(String line) {
@@ -755,6 +848,12 @@ void handleCommand(String line) {
 
   if (command == "help" || command == "?") {
     printHelp();
+  } else if (command == "debug") {
+    commandDebug(line);
+  } else if (command == "sniff") {
+    commandSniff(line);
+  } else if (command == "loopback") {
+    commandLoopback();
   } else if (command == "pdu-help") {
     commandPduHelp();
   } else if (command == "ping") {
@@ -796,7 +895,9 @@ void setup() {
 
   Serial.println(F("Artemis PDU v2 Teensy Comms Test"));
   Serial.println(F("USB console: 9600 baud"));
-  Serial.println(F("PDU UART: Serial1 at 9600 baud"));
+  Serial.print(F("PDU UART: Serial1 at "));
+  Serial.print(PDU_UART_BAUD);
+  Serial.println(F(" baud"));
   Serial.println(F("Type 'help' for commands."));
   Serial.println();
 }

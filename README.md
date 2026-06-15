@@ -1,90 +1,145 @@
-# Artemis CubeSat – PDU MCU Firmware
+# Artemis CubeSat PDU Firmware
 
-## Project Metadata
-- **Project Type**: Embedded Firmware
-- **Target Platform**: SAME51 Microcontroller
-- **Framework**: MPLAB Harmony v3
-- **IDE**: MPLAB X
-- **License**: MIT/Apache (see individual file headers)
+Firmware for the Artemis CubeSat Power Distribution Unit (PDU) microcontroller.
+The target MCU is a Microchip ATSAME51 running an MPLAB Harmony v3 / FreeRTOS
+project.
 
-## Overview
+## Purpose
 
-This repository contains the flight-software layer that runs on the SAME51 micro-controller of the **Power Distribution Unit (PDU)**.
-It handles three core functionalities:
+This firmware owns the low-level PDU board behavior:
 
-1. **System bring-up & main loop** (`main.c`) 
-2. **Application logic** (initial-state, UART command handling, watchdog feed) (`app.c/.h`) 
-3. **Binary command / telemetry packets** (`pdu_packet.c/.h`) 
+- safe GPIO defaults at boot
+- switched rail control and readback
+- burn-wire pulse control with an arm token and bounded duration
+- torque-coil H-bridge command/readback support
+- compact status telemetry for bring-up and demo operations
+- watchdog-driven board reset behavior
+- a framed UART command protocol for the Teensy/OBC side
 
-## Dependencies
-- MPLAB Harmony v3 Framework
-- Microchip SAME51 BSP
-- MAX16998 Watchdog Timer
+The firmware exposes logical PDU outputs, not raw pin choreography. Board-specific
+details such as composite rails and shared enable pins stay inside this firmware.
 
-## Technical Specifications
+## System Role
 
-### Hardware Requirements
-- SAME51 Microcontroller
-- MAX16998 Watchdog Timer
-- UART Interface
-- GPIO Pins for Switch Control
+The intended flight-software boundary is:
 
-### Software Architecture
-
-#### Core Components
-| Component | File | Description |
-|-----------|------|-------------|
-| System Initialization | `main.c` | Entry point and system initialization |
-| Application Logic | `app.c/.h` | High-level behavior and state management |
-| Protocol Layer | `pdu_packet.c/.h` | Command parsing and response generation |
-
-### Communication Protocol
-
-#### Supported Commands
-| Op-code | Command | Description |
-|---------|---------|-------------|
-| `PING` | Ping | Returns `ACK`—used by the ground station for a liveness check. |
-| `SET_SWITCH` | Set Switch | Turns any of the 3 V3/5 V/12 V rails, VBATT, burn-wires, or torque-coil H-bridge legs on or off. |
-| `GET_SWITCH_STATUS` | Get Status | Reads back the current latch state of every switch for telemetry verification. |
-
-*(All packet layouts and value enums live in `pdu_packet.h`; parsing logic is in `pdu_packet.c`.)*
-
-### Project Structure
-```
-/artemis-cubesat-pdu-firmware
-│  main.c              # System entry point
-│  app.c              # Application logic
-│  app.h              # Application interface
-│  pdu_packet.c       # Protocol implementation
-│  pdu_packet.h       # Protocol definitions
-│  packs/             # Harmony-generated BSP
-│  third_party/       # Third-party dependencies
-└─ default/           # Harmony configuration
+```text
+F Prime EPS component
+  -> Teensy / EPS adapter
+  -> PDU UART protocol
+  -> SAME51 PDU firmware
+  -> PDU hardware
 ```
 
-## Build & Deployment
+The F Prime component should live in a separate flight-software repository. This
+repository provides the PDU MCU firmware and the UART protocol that an adapter can
+call.
 
-### Prerequisites
-- MPLAB X IDE
-- XC32 Compiler
-- Microchip Programmer
+## Current Protocol
 
-### Build Instructions
-Please refer to the detailed build guide:
-[Build & Flash Instructions](https://docs.google.com/document/d/1mCISQ2FT9NdC7M1yRxyKPuSgM1M17ViQa_bvZ7Jp-Uk/edit?usp=sharing)
+The active interface is the framed binary UART v2 protocol documented in
+[`PDU_PROTOCOL_ICD.md`](PDU_PROTOCOL_ICD.md).
 
-## Development Guidelines
+Protocol features:
 
-### Code Organization
-- Each file has a single responsibility
-- Hardware control is isolated in `pdu_packet.c`
-- Application logic is contained in `app.c`
-- System initialization in `main.c`
+- fixed start-of-frame byte
+- explicit protocol version and opcode
+- sequence number echoed in responses
+- payload length field
+- fixed 9600 baud link setting
+- CRC-16/CCITT over header and payload
+- structured status codes
+- inter-byte timeout for incomplete frames
 
-### Testing
-- UART-based command interface for testing
-- Watchdog timer monitoring
-- Switch state verification
+Current commands:
+
+| Command | Purpose |
+| --- | --- |
+| `PING` | Link check |
+| `GET_PROTOCOL_INFO` | Version, capabilities, payload limits |
+| `GET_SUMMARY_STATUS` | Output bitmap, reset cause, faults, uptime, capabilities |
+| `GET_RESET_INFO` | MCU reset-cause register |
+| `HELP` | Short human-readable command list for bench testing |
+| `GET_OUTPUT_STATE` | Read one logical output or all logical outputs |
+| `SET_OUTPUT_STATE` | Set one normal latchable output |
+| `POWER_CYCLE_OUTPUT` | Turn an output off, wait, then restore it |
+| `FIRE_BURN_WIRE` | Fire one burn-wire channel for a bounded duration |
+| `SET_TORQUE_COIL` | Set one torque coil mode/current, optionally timed |
+| `GET_TORQUE_COIL` | Read one torque coil state |
+| `SOFTWARE_RESET` | Reply OK, then intentionally stop watchdog service |
+
+## Repository Map
+
+| Path | Purpose |
+| --- | --- |
+| `src/main.c` | Harmony entry point |
+| `src/app.c`, `src/app.h` | Startup defaults and UART polling loop |
+| `src/pdu_packet.c`, `src/pdu_packet.h` | Framed protocol parser, command handlers, GPIO behavior |
+| `src/pdu_protocol_v2.h` | Shared in-repo wire-protocol constants for firmware and Teensy bench tooling |
+| `PDU_PROTOCOL_ICD.md` | Protocol source of truth |
+| `src/config/default/` | Harmony-generated configuration and drivers |
+| `ArtemisPDU.X/` | MPLAB X project files |
+| `teensy/` | Bench-test sketches for manual protocol and sensor checks |
+| `docs/` | Architecture, hardware, and test documentation |
+
+The Teensy comms sketch includes the same protocol header through a
+sketch-local symlink, so active opcodes, status codes, output IDs, and payload
+limits are defined in one place.
+
+## Build
+
+Use MPLAB X with the XC32 compiler and Harmony v3 project support.
+
+This repository includes MPLAB X project files under `ArtemisPDU.X/`. Terminal
+builds depend on the local Microchip toolchain being installed and configured.
+Only claim a build passed if it was actually built with the local XC32/Harmony
+environment.
+
+## Testing
+
+Bench testing currently uses the Teensy sketches under `teensy/`.
+
+Start with:
+
+- [`docs/teensy_testing.md`](docs/teensy_testing.md) for manual test commands
+- [`PDU_PROTOCOL_ICD.md`](PDU_PROTOCOL_ICD.md) for packet layouts
+- [`docs/current_pdu_architecture.md`](docs/current_pdu_architecture.md) for runtime behavior
+
+Known practical checks:
+
+- `ping`
+- `info`
+- `summary`
+- `pdu-help`
+- `get all`
+- `set <output> <on|off>`
+- `cycle <output> <off_ms>`
+
+## Scope
+
+Implemented now:
+
+- framed UART command/response protocol
+- logical output control and readback
+- composite 12 V rail handling
+- bounded power-cycle operations
+- bounded burn-wire operations
+- low-level torque-coil control/readback
+- reset-cause and summary status reporting
+- uptime based on FreeRTOS scheduler ticks
+- parser recovery for truncated frames
+
+Not implemented in this firmware:
+
+- native USB/CDC command interface
+- MicroSD logging or file operations
+- full analog power, current, and temperature telemetry
+- charger control/status abstraction
+- asynchronous event frames
+
+Those higher-level EPS telemetry and mission behaviors should be handled by the
+Teensy/EPS adapter and F Prime component as appropriate.
 
 ## License
-See the top-of-file headers in each source for MIT/Apache notices as applicable.
+
+See the top-of-file headers and included third-party notices for license details.

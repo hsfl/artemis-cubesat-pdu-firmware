@@ -2,7 +2,9 @@
 
 ## Purpose
 
-This file captures the current mission context and protocol-design direction for PDU protocol refactor work. It is a working engineering note for agents and developers, not a polished product spec.
+This file captures the current mission context, firmware intent, and protocol
+direction for follow-on PDU work. It is a working engineering note for agents
+and developers. For public onboarding, start with `README.md`.
 
 ## Mission Context
 
@@ -56,6 +58,9 @@ The Raspberry Pi / F' side should consume a simpler mission-facing EPS adapter i
 - The active protocol is now the framed binary protocol defined in `src/pdu_protocol_v2.h`.
 - The ICD for the current protocol lives in `PDU_PROTOCOL_ICD.md`.
 - The old ASCII-offset protocol is no longer the active runtime interface in this checkout.
+- `HELP` is intentionally short enough to fit inside the 96-byte v2 payload limit.
+- Timed output operations use wrap-safe FreeRTOS tick elapsed-time checks.
+- Incomplete UART frames are discarded after a 100 ms inter-byte timeout.
 
 ## Current Protocol Direction
 
@@ -102,17 +107,30 @@ The external controller should request intent, not micromanage pins.
 ## Current Near-Term Scope
 
 The current framed protocol implements:
+- `PING`
 - `GET_PROTOCOL_INFO`
 - `GET_SUMMARY_STATUS`
 - `GET_RESET_INFO`
+- `HELP`
 - `GET_OUTPUT_STATE`
 - `SET_OUTPUT_STATE`
+- `POWER_CYCLE_OUTPUT`
+- `FIRE_BURN_WIRE`
+- `SET_TORQUE_COIL`
+- `GET_TORQUE_COIL`
+- `SOFTWARE_RESET`
 
 That is enough to support:
 - stable bring-up
 - visible SOH
 - reliable command acknowledgement
 - direct output control for the demo path
+- basic burn-wire and torque-coil bench/demo operations
+
+The PDU MCU does not currently expose full analog current, voltage, temperature,
+or charger telemetry. That is acceptable for the planned architecture because
+the Teensy has direct access to those telemetry paths and can merge them into a
+mission-facing EPS view for F Prime.
 
 ## Practical Guidance For Follow-On Work
 
@@ -122,3 +140,5 @@ That is enough to support:
 - Make the shared protocol header match actual implemented behavior at every step.
 - Prefer idempotent commands such as "set state" over toggle-style commands.
 - Treat `summary status` as a first-class product requirement because it supports the demo story directly.
+- Keep F Prime mission components independent of raw PDU frame bytes. Put frame
+  encoding/decoding in an adapter/client layer.

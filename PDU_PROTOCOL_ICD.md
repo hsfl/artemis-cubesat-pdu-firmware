@@ -27,6 +27,7 @@ This protocol replaces the older newline-terminated ASCII-offset packet scheme. 
 ## Transport
 
 - Physical link: UART
+- Baud rate: fixed 9600 baud
 - Byte order: little-endian for multi-byte numeric payload fields
 - Framing: fixed start-of-frame byte plus explicit payload length
 - Integrity check: CRC-16/CCITT over header and payload
@@ -50,6 +51,7 @@ Each frame is:
 Notes:
 - `sof` is not included in the CRC.
 - Once a frame starts, the parser uses `payload_len` to determine frame length. `0xA5` may appear inside payload or CRC bytes.
+- An incomplete frame is discarded if no next byte arrives within 100 ms.
 - The current firmware only emits `response` frames. `event` is reserved for later use.
 
 ## Status Codes
@@ -149,7 +151,7 @@ Response payload:
 
 Current implementation notes:
 - `fault bitmap` reports active H-bridge fault indications.
-- `uptime seconds` is derived from the running RTC timer.
+- `uptime seconds` is derived from the FreeRTOS scheduler tick and accumulated across 16-bit tick rollover.
 - The output bitmap bit order matches the public output order below, excluding reserved IDs `0x06`, `0x0B`, `0x0C`, and `0xFF`.
 
 Fault bitmap:

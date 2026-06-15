@@ -102,6 +102,9 @@ byte is passed to `pdu_protocol_process_byte()`.
 If a read fails or a USART error is detected, the protocol parser is reset so a
 corrupted partial frame cannot affect the next valid frame.
 
+If a frame starts but the next byte does not arrive within 100 ms, the parser
+also discards that incomplete frame and waits for a fresh SOF byte.
+
 ## Active Wire Protocol
 
 The active protocol is a small framed binary request/response protocol:
@@ -120,6 +123,7 @@ Key properties:
 - CRC-16/CCITT over the frame except SOF
 - little-endian multi-byte payload fields
 - fixed-width fields only
+- 100 ms inter-byte timeout for incomplete frames
 
 After SOF, the parser follows the explicit payload length, so `0xA5` is allowed
 inside payload and CRC bytes.

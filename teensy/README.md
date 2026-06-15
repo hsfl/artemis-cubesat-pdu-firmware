@@ -8,6 +8,7 @@ These sketches are for bench testing the Artemis PDU with a Teensy.
   - Talks to the PDU MCU over the new framed v2 UART protocol.
   - Use this for manual protocol testing through the Arduino Serial Monitor.
   - This replaces the old legacy ASCII/newline `pdu_comm.ino` approach.
+  - Includes `src/pdu_protocol_v2.h` through a sketch-local symlink so protocol constants are not duplicated.
 
 - `pdu_board_sensor_test/pdu_board_sensor_test.ino`
   - Checks the PDU-side analog temperature input and INA219 current sensors.
@@ -17,9 +18,12 @@ These sketches are for bench testing the Artemis PDU with a Teensy.
 
 Default PDU UART settings:
 
-- Baud: `9600`
+- Fixed baud: `9600`
 - Teensy console: USB `Serial`
 - Teensy to PDU: `Serial1`
+
+The comms sketch does not allow changing the PDU UART baud at runtime. This
+keeps manual bench testing from accidentally desynchronizing the Teensy and PDU.
 
 Wire the UART as crossed TX/RX:
 
@@ -56,7 +60,7 @@ triggered by a casual typo during bench testing.
 For future F Prime integration, lift the protocol-core pieces from
 `pdu_comms_test.ino`:
 
-- protocol constants
+- `src/pdu_protocol_v2.h` as the shared protocol contract
 - `crc16Ccitt()`
 - `sendRequest()`
 - `readResponse()`

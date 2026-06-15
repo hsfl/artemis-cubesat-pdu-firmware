@@ -10,8 +10,7 @@ This repository contains Artemis CubeSat PDU firmware for a Microchip ATSAME51 M
 - `src/config/default/tasks.c`: Creates the FreeRTOS tasks for `SYS_FS`, `DRV_SDSPI`, the watchdog, and `APP_Tasks`, then starts the scheduler.
 - `src/app.c` / `src/app.h`: Main handwritten application logic. Applies safe startup GPIO defaults, sets the status LED, and polls UART. `APP_Tasks()` currently only polls `USART_READ()`.
 - `src/pdu_packet.c` / `src/pdu_packet.h`: Active framed protocol parser/encoder and GPIO state control for output commands and telemetry.
-- `src/pdu_protocol_v2.h`: Current local protocol definition for framed UART communication with explicit opcodes, output IDs, and status codes.
-- `src/artemis-cubesat-protocols/pdu/pdu_protocol.h`: Legacy shared protocol header, tracked as a Git submodule. It is retained for reference but is not the active v2 runtime contract.
+- `src/pdu_protocol_v2.h`: Shared in-repo protocol definition for framed UART communication. Firmware and the Teensy comms tester include this same header.
 - `src/config/default/`: Harmony-generated configuration, peripheral drivers, system services, and `definitions.h`.
 - `ArtemisPDU.X/`: MPLAB X project metadata, generated makefiles, and MCC/Harmony configuration snapshots.
 - `src/packs/`, `src/third_party/`: Vendor/device pack and third-party code.
@@ -47,7 +46,7 @@ This repository contains Artemis CubeSat PDU firmware for a Microchip ATSAME51 M
 - Startup uses the same `disableAllGPIOs()` helper as protocol-level all-off behavior.
 - Verify active-high/active-low intent from `definitions.h` and board behavior before changing any GPIO default.
 - The active wire protocol is the framed binary protocol defined in `src/pdu_protocol_v2.h` and described in `PDU_PROTOCOL_ICD.md`.
-- The older ASCII-offset shared header under `src/artemis-cubesat-protocols/` is no longer the active runtime contract for this firmware checkout.
+- `src/pdu_protocol_v2.h` is the single in-repo protocol header. Do not duplicate active opcode, status, or output constants in test sketches.
 - Packet layout still matters:
   - use fixed-width fields only on the wire
   - preserve CRC coverage and frame structure
@@ -68,14 +67,14 @@ This repository contains Artemis CubeSat PDU firmware for a Microchip ATSAME51 M
 
 ## Git And Workspace Notes
 
-- `src/artemis-cubesat-protocols` is a Git submodule in this checkout. Treat it as a separate repo unless the task explicitly asks to update shared protocol definitions too.
-- Do not remove nested Git metadata, rewrite submodule configuration, or "flatten" the workspace layout unless explicitly asked.
+- There is intentionally no active external protocol dependency in this checkout. Keep the PDU v2 protocol ground truth in this repo until there are multiple real production consumers and explicit versioning ownership.
 - The repo may contain generated MPLAB/Harmony artifacts; avoid broad formatting or cleanup changes across generated code.
 
 ## Practical Agent Guidance
 
 - Keep changes surgical. The handwritten logic surface is small; most of the repo is generated or vendor-owned.
+- The Teensy comms tester uses a sketch-local symlink to `src/pdu_protocol_v2.h`; do not replace it with duplicated constants.
 - When touching protocol code, verify both command execution and telemetry/readback paths.
 - When touching GPIO behavior, confirm whether the state is direct-pin or composite logical state before changing anything.
-- When touching packet structures, reason carefully about packed layout, ASCII offset conversion, and compatibility with the shared protocol submodule.
+- When touching packet structures, reason carefully about fixed-width layout, CRC coverage, and compatibility with the Teensy comms tester.
 - If a task requires Harmony/MCC regeneration, document exactly which generated areas were intentionally changed and what likely needs to be regenerated in MPLAB X.

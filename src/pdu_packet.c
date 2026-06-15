@@ -10,6 +10,8 @@
 #include "FreeRTOS.h"
 #include "task.h"
 
+#define PDU_PARSER_INTER_BYTE_TIMEOUT_TICKS pdMS_TO_TICKS(100U)
+
 /*
  * The parser keeps only the minimum state needed to assemble one framed UART
  * message at a time. Keeping this structure small makes it easier to reason
@@ -20,6 +22,7 @@ typedef struct
     bool in_frame;
     uint8_t frame_len;
     uint8_t expected_len;
+    TickType_t lastByteTick;
     uint8_t frame_buf[PDU_V2_MAX_FRAME_LEN];
 } PDU_ParserState;
 
@@ -36,12 +39,19 @@ typedef struct
     bool active;
     PDU_TimedOpType type;
     uint8_t outputId;
-    TickType_t dueTick;
+    TickType_t startTick;
+    TickType_t delayTicks;
 } PDU_TimedOperation;
 
 static PDU_ParserState parserState = {0};
 static PDU_TimedOperation timedOperation = {0};
 static volatile bool softwareResetRequested = false;
+
+/* FreeRTOS ticks are 16-bit in this project, so keep telemetry uptime wider. */
+static bool uptimeInitialized = false;
+static TickType_t uptimeLastTick = 0U;
+static uint32_t uptimeRemainderTicks = 0U;
+static uint32_t uptimeSeconds = 0U;
 
 /*
  * Output arrays and bitmaps use one consistent order everywhere:
@@ -86,6 +96,7 @@ static void pdu_fill_all_output_states(uint8_t *states);
 static uint16_t pdu_get_output_bitmap(void);
 static uint8_t pdu_get_fault_bitmap(void);
 static uint8_t pdu_get_reset_cause(void);
+static void pdu_update_uptime(void);
 static uint32_t pdu_get_uptime_seconds(void);
 static uint8_t pdu_get_capabilities(void);
 static void pdu_send_response(uint8_t seq, uint8_t opcode, uint8_t status, const uint8_t *payload, uint8_t payload_len);
@@ -97,6 +108,7 @@ static void pdu_parser_reset(void)
     parserState.in_frame = false;
     parserState.frame_len = 0U;
     parserState.expected_len = 0U;
+    parserState.lastByteTick = 0U;
 }
 
 void pdu_protocol_reset_parser(void)
@@ -194,7 +206,8 @@ static void pdu_clear_timed_operation(void)
     timedOperation.active = false;
     timedOperation.type = PDU_TIMED_OP_NONE;
     timedOperation.outputId = 0U;
-    timedOperation.dueTick = 0U;
+    timedOperation.startTick = 0U;
+    timedOperation.delayTicks = 0U;
 }
 
 static void pdu_start_timed_operation(PDU_TimedOpType type, uint8_t outputId, uint16_t delayMs)
@@ -209,17 +222,20 @@ static void pdu_start_timed_operation(PDU_TimedOpType type, uint8_t outputId, ui
     timedOperation.active = true;
     timedOperation.type = type;
     timedOperation.outputId = outputId;
-    timedOperation.dueTick = xTaskGetTickCount() + delayTicks;
+    timedOperation.startTick = xTaskGetTickCount();
+    timedOperation.delayTicks = delayTicks;
 }
 
 void pdu_protocol_service_timers(void)
 {
+    pdu_update_uptime();
+
     if (!timedOperation.active)
     {
         return;
     }
 
-    if ((int32_t)(xTaskGetTickCount() - timedOperation.dueTick) < 0)
+    if ((TickType_t)(xTaskGetTickCount() - timedOperation.startTick) < timedOperation.delayTicks)
     {
         return;
     }
@@ -646,16 +662,35 @@ static uint8_t pdu_get_reset_cause(void)
     return RSTC_REGS->RSTC_RCAUSE;
 }
 
-static uint32_t pdu_get_uptime_seconds(void)
+static void pdu_update_uptime(void)
 {
-    uint32_t rtcFrequency = RTC_Timer32FrequencyGet();
+    TickType_t currentTick = xTaskGetTickCount();
+    TickType_t elapsedTicks;
+    uint32_t totalTicks;
 
-    if (rtcFrequency == 0U)
+    if (!uptimeInitialized)
     {
-        return 0U;
+        uptimeLastTick = currentTick;
+        uptimeInitialized = true;
+        return;
     }
 
-    return RTC_Timer32CounterGet() / rtcFrequency;
+    elapsedTicks = (TickType_t)(currentTick - uptimeLastTick);
+    if (elapsedTicks == 0U)
+    {
+        return;
+    }
+
+    uptimeLastTick = currentTick;
+    totalTicks = uptimeRemainderTicks + (uint32_t)elapsedTicks;
+    uptimeSeconds += totalTicks / (uint32_t)configTICK_RATE_HZ;
+    uptimeRemainderTicks = totalTicks % (uint32_t)configTICK_RATE_HZ;
+}
+
+static uint32_t pdu_get_uptime_seconds(void)
+{
+    pdu_update_uptime();
+    return uptimeSeconds;
 }
 
 static uint8_t pdu_get_capabilities(void)
@@ -752,16 +787,16 @@ static void pdu_handle_request(uint8_t opcode, uint8_t seq, const uint8_t *paylo
 
         {
             uint16_t outputBitmap = pdu_get_output_bitmap();
-            uint32_t uptimeSeconds = pdu_get_uptime_seconds();
+            uint32_t currentUptimeSeconds = pdu_get_uptime_seconds();
 
             responsePayload[0] = (uint8_t)(outputBitmap & 0xFFU);
             responsePayload[1] = (uint8_t)(outputBitmap >> 8U);
             responsePayload[2] = pdu_get_reset_cause();
             responsePayload[3] = pdu_get_fault_bitmap();
-            responsePayload[4] = (uint8_t)(uptimeSeconds & 0xFFU);
-            responsePayload[5] = (uint8_t)((uptimeSeconds >> 8U) & 0xFFU);
-            responsePayload[6] = (uint8_t)((uptimeSeconds >> 16U) & 0xFFU);
-            responsePayload[7] = (uint8_t)((uptimeSeconds >> 24U) & 0xFFU);
+            responsePayload[4] = (uint8_t)(currentUptimeSeconds & 0xFFU);
+            responsePayload[5] = (uint8_t)((currentUptimeSeconds >> 8U) & 0xFFU);
+            responsePayload[6] = (uint8_t)((currentUptimeSeconds >> 16U) & 0xFFU);
+            responsePayload[7] = (uint8_t)((currentUptimeSeconds >> 24U) & 0xFFU);
             responsePayload[8] = pdu_get_capabilities();
         }
 
@@ -788,7 +823,7 @@ static void pdu_handle_request(uint8_t opcode, uint8_t seq, const uint8_t *paylo
 
         {
             static const char helpPayload[] =
-                VERSION_STRING " cmds:PING,INFO,SUMMARY,RESET_INFO,HELP,GET,SET,PWR_CYCLE,FIRE_BURN,SET_TORQUE,GET_TORQUE,SW_RESET";
+                VERSION_STRING " cmds:PING,INFO,SUMMARY,RESET_INFO,HELP,GET,SET,CYCLE,BURN,TRQ_SET,TRQ_GET,SW_RESET";
             pdu_send_response(seq, opcode, PDU_V2_STATUS_OK, (const uint8_t *)helpPayload, (uint8_t)(sizeof(helpPayload) - 1U));
         }
         return;
@@ -1073,6 +1108,14 @@ static void pdu_handle_complete_frame(const uint8_t *frame, uint8_t frame_len)
 
 void pdu_protocol_process_byte(uint8_t byte)
 {
+    TickType_t currentTick = xTaskGetTickCount();
+
+    if (parserState.in_frame &&
+        ((TickType_t)(currentTick - parserState.lastByteTick) > PDU_PARSER_INTER_BYTE_TIMEOUT_TICKS))
+    {
+        pdu_parser_reset();
+    }
+
     if (parserState.in_frame)
     {
         /*
@@ -1085,6 +1128,7 @@ void pdu_protocol_process_byte(uint8_t byte)
             return;
         }
 
+        parserState.lastByteTick = currentTick;
         parserState.frame_buf[parserState.frame_len++] = byte;
 
         if (parserState.frame_len == PDU_V2_HEADER_LEN)
@@ -1116,6 +1160,7 @@ void pdu_protocol_process_byte(uint8_t byte)
         parserState.in_frame = true;
         parserState.frame_buf[0] = byte;
         parserState.frame_len = 1U;
+        parserState.lastByteTick = currentTick;
     }
 }
 

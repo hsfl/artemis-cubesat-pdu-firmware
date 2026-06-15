@@ -272,7 +272,6 @@
       <itemPath>../src/app.h</itemPath>
       <itemPath>../src/pdu_packet.h</itemPath>
       <itemPath>../src/version.h</itemPath>
-      <itemPath>../src/artemis-cubesat-protocols/pdu/pdu_protocol.h</itemPath>
     </logicalFolder>
     <logicalFolder name="ExternalFiles"
                    displayName="Important Files"
