@@ -112,7 +112,7 @@ generatedFileHashHistoryMap:
 - file: ..\src\config\default\peripheral\nvmctrl\plib_nvmctrl.h
   hash: fd7749dc74a885efd7c593394454abc74afc7cf184123f0315425a3600c26ac5
 - file: ..\src\config\default\peripheral\port\plib_port.c
-  hash: 8ad6f8dcce7d2e2fe714e5265925c4e22f4db19bde6d30a4d363f61fcdb0c9d6
+  hash: 425a3f2a605e0f33fc824622bfdf5bb749ee7a2bf4bb0e0465b32ac035a0515b
 - file: ..\src\config\default\peripheral\port\plib_port.h
   hash: 6954c9c649c3486b5be4b218e39cd0cc2200e04c299c1547abd9b7db67c787a7
 - file: ..\src\config\default\peripheral\rtc\plib_rtc.h
@@ -142,7 +142,7 @@ generatedFileHashHistoryMap:
 - file: ..\src\config\default\peripheral\wdt\plib_wdt.h
   hash: d4bb429b750e4e2970fe12d9c4eea02d2e0b1f1d30279577033555379f94e1a0
 - file: ..\src\config\default\pin_configurations.csv
-  hash: 8675947445a5bd0925699cd5414dbd118bc4ee748c17357f2c425218d9735fb2
+  hash: 551dd1fca6471a6f164cc8d6021a274db8ec5707383b56ac2cb69a1f3e84abb2
 - file: ..\src\config\default\startup_xc32.c
   hash: f374b97d65f92553f1b75d8c9239b8b0f8581c710f78ea47b02c7f6fa6f74c74
 - file: ..\src\config\default\stdio\xc32_monitor.c

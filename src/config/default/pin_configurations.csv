@@ -40,8 +40,8 @@ Pin Number,Pin ID,Custom Name,Function,Mode, Direction,Latch,Pull Up,Pull Down,D
 47,PA13,SD_SCK,SERCOM2_PAD1,Digital,High Impedance,n/a,No,No,NORMAL
 48,PA14,SD_MISO,SERCOM2_PAD2,Digital,High Impedance,n/a,No,No,NORMAL
 49,PA15,BURN2_EN,GPIO,Digital,In/Out,Low,,,NORMAL
-52,PA16,FAULT2,GPIO,Digital,In/Out,Low,,,NORMAL
-53,PA17,FAULT1,GPIO,Digital,In/Out,Low,,,NORMAL
+52,PA16,FAULT2,GPIO,Digital,In,n/a,No,No,NORMAL
+53,PA17,FAULT1,GPIO,Digital,In,n/a,No,No,NORMAL
 54,PA18,SLEEP2,GPIO,Digital,In/Out,Low,,,NORMAL
 55,PA19,IN5,GPIO,Digital,In/Out,Low,,,NORMAL
 56,PC16,IN6,GPIO,Digital,In/Out,Low,,,NORMAL
