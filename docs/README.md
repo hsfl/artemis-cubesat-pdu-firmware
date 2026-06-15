@@ -18,7 +18,8 @@ Read these in order when onboarding to the PDU:
 4. [PDU Protocol ICD](../PDU_PROTOCOL_ICD.md)
    - Source of truth for the active framed v2 UART protocol.
 5. [Teensy PDU Testing Guide](teensy_testing.md)
-   - How to use the new Teensy comms and sensor-check sketches.
+   - How to use the current Teensy comms and sensor-check sketches, plus the
+     planned `ALL`, `VIBE`, and `THERMAL` test-sketch split.
 
 ## Design And Planning Docs
 
@@ -37,11 +38,17 @@ Read these in order when onboarding to the PDU:
 
 ## Current Scope Notes
 
+- Use the Artemis PDU manual as hardware context. The temporary student PDF ICD
+  is not the source of truth for current firmware or test-sketch behavior.
 - USB-C hardware exists, but native USB/CDC firmware is not implemented.
 - MicroSD hardware and generated Harmony SD/FATFS support exist, but the
   handwritten app runtime does not currently use MicroSD.
 - The active command interface is framed binary UART v2.
 - The old ASCII/newline PDU command format is legacy reference only.
+- Battery-charger `SHDN` / `CHRG` behavior remains unimplemented because those
+  signals are not currently confirmed in generated MPLAB/Harmony pin config.
+  Per the LTC4012 datasheet, future charger support should treat `SHDN` high as
+  charger enabled and `SHDN` low as charger shutdown.
 - Current firmware supports link checks, protocol info, summary status, reset
   info, output get/set, power cycle, burn-wire pulse, torque-coil control,
   software-reset request, and bench help.

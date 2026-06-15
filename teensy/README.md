@@ -14,6 +14,22 @@ These sketches are for bench testing the Artemis PDU with a Teensy.
   - Checks the PDU-side analog temperature input and INA219 current sensors.
   - This is not the PDU MCU command protocol. It is a separate board-health test.
 
+Planned next sketches:
+
+- `pdu_all_test/pdu_all_test.ino`
+  - Bench checkout profile for link, protocol info, status, output readback,
+    selected safe rail operations, and torque readback.
+- `pdu_vibe_test/pdu_vibe_test.ino`
+  - Vibration-test setup profile that commands normal outputs off and verifies
+    burn-wire and torque-coil safe states.
+- `pdu_thermal_test/pdu_thermal_test.ino`
+  - Thermal-vac support profile that polls PDU status and enables only the rails
+    required by the approved thermal test setup.
+
+Keep these as Teensy-side profiles rather than PDU firmware modes. The PDU
+firmware should remain a low-level EPS controller with explicit commands and
+readbacks.
+
 ## UART Wiring
 
 Default PDU UART settings:
@@ -54,6 +70,18 @@ reset-pdu arm
 
 Burn-wire and reset commands require the literal `arm` word so they cannot be
 triggered by a casual typo during bench testing.
+
+## Charger Scope
+
+Do not add charger commands to the Teensy tester yet. The hardware manual names
+`SHDN` and `CHRG`, but this repo's generated MPLAB/Harmony pin configuration
+does not currently expose confirmed named MCU pins for those signals. Charger
+test support should wait until that pin mapping is verified and generated
+configuration is updated deliberately.
+
+When charger support is added, use the LTC4012 datasheet polarity: `SHDN` high
+enables the charger, `SHDN` low shuts it down, and `CHRG` is an active-low
+open-drain charge indicator.
 
 ## Flight-Software Direction
 

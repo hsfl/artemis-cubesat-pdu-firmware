@@ -5,11 +5,21 @@
 The Teensy sketches provide simple bench tools for students to validate the PDU
 without reusing the old legacy ASCII/newline command format.
 
+Use the Artemis PDU manual as the hardware context for these sketches. Ignore
+the temporary student PDF ICD for current implementation decisions; it is a
+working draft of intent, not the active protocol/test contract.
+
 Use:
 
 - `teensy/pdu_comms_test/pdu_comms_test.ino` for PDU MCU UART protocol testing
 - `teensy/pdu_board_sensor_test/pdu_board_sensor_test.ino` for direct sensor
   line checkout
+
+Planned next sketches:
+
+- `teensy/pdu_all_test/pdu_all_test.ino` for full bench checkout
+- `teensy/pdu_vibe_test/pdu_vibe_test.ino` for vibration-test safe-state setup
+- `teensy/pdu_thermal_test/pdu_thermal_test.ino` for thermal-vac support
 
 ## PDU Comms Test
 
@@ -145,6 +155,69 @@ The sketch prints:
 
 This sensor sketch does not talk to the PDU MCU. It is a direct electrical
 checkout tool.
+
+## Planned Test Profiles
+
+The PDF ICD's `ALL`, `VIBE`, and `THERMAL` entries are test intents, not current
+PDU firmware modes. Implement them as separate Teensy sketches so each profile
+can be reviewed, changed, and run independently.
+
+### `pdu_all_test`
+
+Purpose: full bench checkout before deeper subsystem testing.
+
+Expected behavior:
+
+- open the PDU UART at `9600`
+- run `PING`, `GET_PROTOCOL_INFO`, `GET_SUMMARY_STATUS`, and `GET_RESET_INFO`
+- read all output states
+- exercise selected normal rails with set/get checks
+- exercise `POWER_CYCLE_OUTPUT` on a safe already-enabled rail
+- read torque-coil state and optionally run a short low-risk torque pulse only
+  when the operator enables it in the sketch
+- do not auto-fire burn wires
+
+### `pdu_vibe_test`
+
+Purpose: put the PDU into a conservative vibration-test state.
+
+Expected behavior:
+
+- verify UART link and firmware info
+- command all normal controllable outputs off one by one
+- verify all-output readback
+- keep burn-wire channels off
+- keep torque coils coast/off
+- avoid charger commands until `SHDN` and `CHRG` pins are confirmed in
+  MPLAB/Harmony config
+
+### `pdu_thermal_test`
+
+Purpose: support thermal-vac testing without adding a firmware thermal mode.
+
+Expected behavior:
+
+- verify UART link and firmware info
+- poll summary status and reset info during the run
+- enable only the rails explicitly required by the approved test setup
+- keep watchdog servicing active through normal firmware operation
+- use `pdu_board_sensor_test` or its sensor helpers for temperature and INA219
+  telemetry because those lines are OBC/Teensy-facing in the manual context
+
+## Charger Scope
+
+Do not add Teensy commands for PDU charger enable/status yet. The manual names
+`SHDN` and `CHRG`, but this checkout does not currently expose confirmed named
+PDU MCU pins for those signals in `src/config/default/pin_configurations.csv`
+or generated port macros. Charger support should wait until the schematic/pin
+mapping is verified and the MPLAB/Harmony configuration is updated deliberately.
+
+When charger support is added, follow the LTC4012 datasheet polarity:
+
+- `SHDN` high = charger enabled/allowed to run
+- `SHDN` low = charger shutdown/disabled
+- `CHRG` low = active charge indication; the pin is open-drain, so verify the
+  board pull-up before relying on a digital high/low read for detailed status
 
 ## Flight-Software Handoff
 

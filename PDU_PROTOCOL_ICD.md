@@ -6,6 +6,10 @@ This document defines the fresh framed UART protocol for the Artemis PDU MCU.
 
 This protocol replaces the older newline-terminated ASCII-offset packet scheme. Backward compatibility with the old protocol is intentionally not preserved.
 
+Hardware context comes from the Artemis PDU manual and in-repo hardware notes.
+The temporary student PDF ICD is not the current source of truth for firmware
+or controller-side implementation.
+
 ## Design Goals
 
 - Robust UART framing
@@ -399,6 +403,16 @@ The current firmware does not yet implement:
 - latched-fault reporting beyond live H-bridge fault bits
 - heater abstractions separate from burn-wire channels
 - all-output enable command
+
+Charger support is intentionally deferred until `SHDN` and `CHRG` are confirmed
+in the MPLAB/Harmony pin configuration and generated port macros. Do not assign
+wire opcodes for charger control/status until that hardware mapping is verified.
+When implemented, use the LTC4012 datasheet polarity: `SHDN` high enables the
+charger, `SHDN` low shuts it down, and `CHRG` is an active-low open-drain charge
+indicator.
+
+Bench profiles such as `ALL`, `VIBE`, and `THERMAL` should be implemented as
+separate Teensy-side test sketches, not as PDU firmware opcodes.
 
 ## Error Handling Rules
 

@@ -7,6 +7,10 @@ CubeSat. It connects the battery board, solar panels, antenna board, OBC/Teensy,
 deployment safety circuits, burn-wire channels, torque coils, and end-user
 power outputs.
 
+This document should be read as the repo's manual-aligned hardware context.
+The temporary student PDF ICD is useful historical context, but it is not the
+current firmware or test-plan source of truth.
+
 The firmware should expose logical spacecraft behavior. It should not require
 the controller side to know board-pin choreography for composite rails, burn
 wire sequencing, or H-bridge pin pairs.
@@ -265,8 +269,28 @@ Firmware-relevant signals include:
 - `CHRG`: charger status line
 - `BATT_CHRG`: battery charging output path
 
+LTC4012 datasheet behavior:
+
+- `SHDN` is an active-low shutdown input. Drive `SHDN` high to enable/allow the
+  charger, and drive `SHDN` low to shut the charger down.
+- `CHRG` is an active-low open-drain charge indicator. A digital low means the
+  charge indicator is active. Because the pin can also use weak-pulldown/high-Z
+  states, firmware should document any board-level pull-up behavior before
+  treating one GPIO read as detailed charge-state telemetry.
+
 Charger command/state abstraction is not currently implemented in the v2
-protocol.
+protocol. Do not add charger opcodes until the actual `SHDN` and `CHRG` MCU
+pins are confirmed in MPLAB/Harmony pin configuration and generated port macros.
+The current `src/config/default/pin_configurations.csv` does not expose named
+`SHDN` or `CHRG` GPIOs, so implementing this now would require a deliberate
+MPLAB configuration update.
+
+Planned MPLAB pin assignments after schematic/config confirmation:
+
+- physical pin 36 / `PB14`: `SHDN`, GPIO output, initial latch low for safe
+  default charger shutdown
+- physical pin 70 / `PA20`: `CHRG`, GPIO input, pull-up only if the board does
+  not already provide the required pull-up
 
 ## Safety Circuits
 
@@ -293,5 +317,6 @@ Hardware exists, but these features are not fully exposed by current firmware:
 - MicroSD logging/config/file handling
 - full temperature telemetry command path
 - INA219 telemetry command path
-- charger control/status command path
+- charger control/status command path; blocked until `SHDN` and `CHRG` pins
+  are confirmed in generated MPLAB/Harmony config
 - latched fault history beyond live H-bridge fault bits

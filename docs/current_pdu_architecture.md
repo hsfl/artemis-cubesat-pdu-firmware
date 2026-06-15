@@ -5,6 +5,10 @@
 The Artemis PDU firmware now uses a framed binary UART protocol to control
 logical power outputs and return structured status responses.
 
+The active behavior is based on the repo protocol ICD and the Artemis PDU
+manual. The temporary student PDF ICD should be ignored for current firmware
+scope except as rough historical intent.
+
 At a high level, the system is:
 
 ```text
@@ -170,6 +174,24 @@ and optional duration to the DRV8847 control pins.
 `SOFTWARE_RESET` replies `OK`, then asks the watchdog task to stop servicing the
 watchdogs so the board resets through the hardware watchdog path.
 
+The firmware intentionally does not implement `ALL`, `VIBE`, or `THERMAL` as
+on-board modes. Those are bench/test intents and should live as separate
+Teensy-side test sketches so the operator can inspect each step and avoid
+one-command broad state changes in flight firmware.
+
+Battery-charger commands are also intentionally absent for now. The manual
+describes `SHDN` and `CHRG`, but this checkout does not currently expose named
+`SHDN` or `CHRG` pins in the generated MPLAB/Harmony pin configuration. Add
+charger opcodes only after the pins are confirmed and the generated config is
+updated deliberately in MPLAB X. The expected assignments are physical pin 36
+`PB14` as `SHDN` and physical pin 70 `PA20` as `CHRG`.
+
+Per the LTC4012 datasheet, `SHDN` is active-low shutdown: `SHDN_Clear()` should
+mean charger disabled/shutdown, and `SHDN_Set()` should mean charger enabled.
+`CHRG` is an active-low open-drain charge indicator, so a low read means the
+charge indicator is active, subject to the board pull-up and weak-pulldown
+behavior.
+
 ## Logical Outputs
 
 The protocol exposes logical outputs, not raw GPIO commands.
@@ -245,3 +267,26 @@ The refactor removed these handwritten legacy paths from `src/app.c`:
 Generated Harmony SD/FATFS configuration remains available for future work.
 Generated SERCOM4 I2C slave configuration also remains available for future
 work, but the handwritten app no longer initializes or uses it directly.
+
+## Planned Teensy Test Sketch Split
+
+Keep operational test modes out of the PDU firmware. The next bench-test work
+should create separate Teensy sketches:
+
+- `teensy/pdu_all_test/pdu_all_test.ino`
+  - full bench checkout of UART link, protocol info, summary status, selected
+    rail set/get, power-cycle behavior, torque-coil readback, and safe reset
+    info
+  - no automatic burn-wire firing with deployment hardware connected
+- `teensy/pdu_vibe_test/pdu_vibe_test.ino`
+  - vibration-test profile that commands all normal controllable outputs off
+    and verifies output readback before hardware handling
+  - keeps burn-wire channels off and avoids torque-coil actuation
+- `teensy/pdu_thermal_test/pdu_thermal_test.ino`
+  - thermal-vac profile that keeps PDU MCU/watchdog/status polling alive and
+    enables only the rails required by the approved test setup
+  - pairs with direct Teensy sensor checkout for temperature and INA219 data
+
+These sketches should reuse the framed protocol helpers from
+`teensy/pdu_comms_test/pdu_comms_test.ino` and the direct sensor approach from
+`teensy/pdu_board_sensor_test/pdu_board_sensor_test.ino`.
