@@ -3344,7 +3344,7 @@ data:
       - children:
         - attributes:
             id: core
-            value: '0xc1cf8000'
+            value: '0xc1cfc000'
           type: Dynamic
         type: Values
       type: String
@@ -5297,6 +5297,202 @@ data:
           type: User
         type: Values
       type: Boolean
+    PIN_36_MODE:
+      attributes:
+        id: PIN_36_MODE
+      children:
+      - children:
+        - attributes:
+            value: ''
+          type: User
+        type: Values
+      type: String
+    PIN_36_FUNCTION_TYPE:
+      attributes:
+        id: PIN_36_FUNCTION_TYPE
+      children:
+      - children:
+        - attributes:
+            value: GPIO
+          type: User
+        type: Values
+      type: String
+    PORT_GROUP_1_PINCFG14:
+      attributes:
+        id: PORT_GROUP_1_PINCFG14
+      children:
+      - children:
+        - attributes:
+            id: core
+            value: '0x0'
+          type: Dynamic
+        type: Values
+      type: String
+    PORT_GROUP_1_PIN_14_USED:
+      attributes:
+        id: PORT_GROUP_1_PIN_14_USED
+      children:
+      - children:
+        - attributes:
+            id: core
+            value: 'true'
+          type: Dynamic
+        type: Values
+      type: Boolean
+    PIN_36_INEN:
+      attributes:
+        id: PIN_36_INEN
+      children:
+      - children:
+        - attributes:
+            value: ''
+          type: User
+        type: Values
+      type: String
+    PIN_36_DIR:
+      attributes:
+        id: PIN_36_DIR
+      children:
+      - children:
+        - attributes:
+            value: Out
+          type: User
+        type: Values
+      type: String
+    PORT_GROUP_1_PAD_14:
+      attributes:
+        id: PORT_GROUP_1_PAD_14
+      children:
+      - children:
+        - attributes:
+            id: core
+            value: PB14
+          type: Dynamic
+        type: Values
+      type: String
+    PIN_36_PERIPHERAL_FUNCTION:
+      attributes:
+        id: PIN_36_PERIPHERAL_FUNCTION
+      children:
+      - children:
+        - attributes:
+            value: GPIO
+          type: User
+        type: Values
+      type: String
+    PIN_36_FUNCTION_NAME:
+      attributes:
+        id: PIN_36_FUNCTION_NAME
+      children:
+      - children:
+        - attributes:
+            value: SHDN
+          type: User
+        type: Values
+      type: String
+    PIN_70_MODE:
+      attributes:
+        id: PIN_70_MODE
+      children:
+      - children:
+        - attributes:
+            value: ''
+          type: User
+        type: Values
+      type: String
+    PIN_70_FUNCTION_TYPE:
+      attributes:
+        id: PIN_70_FUNCTION_TYPE
+      children:
+      - children:
+        - attributes:
+            value: GPIO
+          type: User
+        type: Values
+      type: String
+    PORT_GROUP_0_PINCFG20:
+      attributes:
+        id: PORT_GROUP_0_PINCFG20
+      children:
+      - children:
+        - attributes:
+            id: core
+            value: '0x2'
+          type: Dynamic
+        type: Values
+      type: String
+    PORT_GROUP_0_PIN_20_USED:
+      attributes:
+        id: PORT_GROUP_0_PIN_20_USED
+      children:
+      - children:
+        - attributes:
+            id: core
+            value: 'true'
+          type: Dynamic
+        type: Values
+      type: Boolean
+    PIN_70_INEN:
+      attributes:
+        id: PIN_70_INEN
+      children:
+      - children:
+        - attributes:
+            value: 'True'
+          type: User
+        type: Values
+      type: String
+    PIN_70_DIR:
+      attributes:
+        id: PIN_70_DIR
+      children:
+      - children:
+        - attributes:
+            value: ''
+          type: User
+        type: Values
+      type: String
+    PORT_GROUP_0_PAD_20:
+      attributes:
+        id: PORT_GROUP_0_PAD_20
+      children:
+      - children:
+        - attributes:
+            id: core
+            value: PA20
+          type: Dynamic
+        type: Values
+      type: String
+    PIN_70_PERIPHERAL_FUNCTION:
+      attributes:
+        id: PIN_70_PERIPHERAL_FUNCTION
+      children:
+      - children:
+        - attributes:
+            value: GPIO
+          type: User
+        type: Values
+      type: String
+    PIN_70_FUNCTION_NAME:
+      attributes:
+        id: PIN_70_FUNCTION_NAME
+      children:
+      - children:
+        - attributes:
+            value: CHRG
+          type: User
+        type: Values
+      type: String
+    PIN_70_PULLEN:
+      attributes:
+        id: PIN_70_PULLEN
+      children:
+      - children:
+        - attributes:
+            value: ''
+          type: User
+        type: Values
+      type: String
   userData:
     children:
     - attributes:

@@ -2,7 +2,7 @@
 
 manifest_file_version: 1.0.0
 project: ArtemisPDU
-creation_date: 2025-06-27T09:58:22.951-10:00[Pacific/Honolulu]
+creation_date: 2026-06-15T13:31:03.142-10:00[Pacific/Honolulu]
 operating_system: Windows 10
 mcc_mode: IDE
 mcc_mode_version: v6.25
@@ -10,7 +10,7 @@ device_name: ATSAME51N19A
 compiler: XC32 4.35
 mcc_version: 5.6.2
 mcc_core_version: 5.8.2
-content_manager_version: 6.0.1
+content_manager_version: 6.0.3
 is_mcc_offline: false
 is_using_prerelease_versions: false
 mcc_content_registries: https://registry.npmjs.org/

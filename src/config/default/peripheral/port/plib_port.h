@@ -73,6 +73,15 @@
 #define CUS_SCL_Get()               (((PORT_REGS->GROUP[1].PORT_IN >> 13U)) & 0x01U)
 #define CUS_SCL_PIN                  PORT_PIN_PB13
 
+/*** Macros for SHDN pin ***/
+#define SHDN_Set()               (PORT_REGS->GROUP[1].PORT_OUTSET = ((uint32_t)1U << 14U))
+#define SHDN_Clear()             (PORT_REGS->GROUP[1].PORT_OUTCLR = ((uint32_t)1U << 14U))
+#define SHDN_Toggle()            (PORT_REGS->GROUP[1].PORT_OUTTGL = ((uint32_t)1U << 14U))
+#define SHDN_OutputEnable()      (PORT_REGS->GROUP[1].PORT_DIRSET = ((uint32_t)1U << 14U))
+#define SHDN_InputEnable()       (PORT_REGS->GROUP[1].PORT_DIRCLR = ((uint32_t)1U << 14U))
+#define SHDN_Get()               (((PORT_REGS->GROUP[1].PORT_IN >> 14U)) & 0x01U)
+#define SHDN_PIN                  PORT_PIN_PB14
+
 /*** Macros for BURN_5V pin ***/
 #define BURN_5V_Set()               (PORT_REGS->GROUP[1].PORT_OUTSET = ((uint32_t)1U << 15U))
 #define BURN_5V_Clear()             (PORT_REGS->GROUP[1].PORT_OUTCLR = ((uint32_t)1U << 15U))
@@ -281,6 +290,15 @@
 /*** Macros for UART2_RXD pin ***/
 #define UART2_RXD_Get()               (((PORT_REGS->GROUP[1].PORT_IN >> 21U)) & 0x01U)
 #define UART2_RXD_PIN                  PORT_PIN_PB21
+
+/*** Macros for CHRG pin ***/
+#define CHRG_Set()               (PORT_REGS->GROUP[0].PORT_OUTSET = ((uint32_t)1U << 20U))
+#define CHRG_Clear()             (PORT_REGS->GROUP[0].PORT_OUTCLR = ((uint32_t)1U << 20U))
+#define CHRG_Toggle()            (PORT_REGS->GROUP[0].PORT_OUTTGL = ((uint32_t)1U << 20U))
+#define CHRG_OutputEnable()      (PORT_REGS->GROUP[0].PORT_DIRSET = ((uint32_t)1U << 20U))
+#define CHRG_InputEnable()       (PORT_REGS->GROUP[0].PORT_DIRCLR = ((uint32_t)1U << 20U))
+#define CHRG_Get()               (((PORT_REGS->GROUP[0].PORT_IN >> 20U)) & 0x01U)
+#define CHRG_PIN                  PORT_PIN_PA20
 
 /*** Macros for LED pin ***/
 #define LED_Set()               (PORT_REGS->GROUP[0].PORT_OUTSET = ((uint32_t)1U << 21U))
