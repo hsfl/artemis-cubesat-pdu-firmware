@@ -76,6 +76,10 @@ typedef enum
     PDU_V2_OP_SET_TORQUE_COIL = 0x14U,
     /* Read one torque-coil H-bridge pair state. */
     PDU_V2_OP_GET_TORQUE_COIL = 0x15U,
+    /* Read LTC4012 charger enable/status pins. */
+    PDU_V2_OP_GET_CHARGER_STATUS = 0x16U,
+    /* Enable or shut down the LTC4012 charger through SHDN. */
+    PDU_V2_OP_SET_CHARGER_STATE = 0x17U,
     /* Ask the watchdog task to stop servicing watchdogs so hardware resets the MCU. */
     PDU_V2_OP_SOFTWARE_RESET = 0x20U
 } PDU_V2_Opcode;
@@ -201,5 +205,20 @@ typedef enum
 #define PDU_V2_GET_TORQUE_COIL_REQ_LEN 1U
 #define PDU_V2_TORQUE_COIL_RESP_LEN 5U
 #define PDU_V2_TORQUE_COIL_MAX_MS 60000U
+
+/*
+ * Charger status response layout:
+ * byte 0: charger enabled command/readback, 1=enabled, 0=shutdown
+ * byte 1: charge indicator active, 1=CHRG asserted low, 0=not asserted
+ * byte 2: SHDN output latch level
+ * byte 3: raw CHRG pin level
+ *
+ * LTC4012 polarity:
+ * - SHDN high enables/permits charger operation
+ * - SHDN low shuts the charger down
+ * - CHRG is an active-low open-drain charge indicator
+ */
+#define PDU_V2_SET_CHARGER_STATE_REQ_LEN 1U
+#define PDU_V2_CHARGER_STATUS_RESP_LEN 4U
 
 #endif /* PDU_PROTOCOL_V2_H */

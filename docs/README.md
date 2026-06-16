@@ -18,8 +18,8 @@ Read these in order when onboarding to the PDU:
 4. [PDU Protocol ICD](../PDU_PROTOCOL_ICD.md)
    - Source of truth for the active framed v2 UART protocol.
 5. [Teensy PDU Testing Guide](teensy_testing.md)
-   - How to use the current Teensy comms and sensor-check sketches, plus the
-     planned `ALL`, `VIBE`, and `THERMAL` test-sketch split.
+   - How to use the current Teensy comms, sensor-check, `ALL`, vibration, and
+     thermal-vac test sketches.
 
 ## Design And Planning Docs
 
@@ -45,12 +45,11 @@ Read these in order when onboarding to the PDU:
   handwritten app runtime does not currently use MicroSD.
 - The active command interface is framed binary UART v2.
 - The old ASCII/newline PDU command format is legacy reference only.
-- Battery-charger `SHDN` / `CHRG` behavior remains unimplemented because those
-  signals are not currently confirmed in generated MPLAB/Harmony pin config.
-  Per the LTC4012 datasheet, future charger support should treat `SHDN` high as
-  charger enabled and `SHDN` low as charger shutdown.
+- Battery-charger `SHDN` / `CHRG` pins are present in generated MPLAB/Harmony
+  config and exposed through charger status/control opcodes. Per the LTC4012
+  datasheet, `SHDN` high is charger enabled and `SHDN` low is charger shutdown.
 - Current firmware supports link checks, protocol info, summary status, reset
   info, output get/set, power cycle, burn-wire pulse, torque-coil control,
-  software-reset request, and bench help.
+  charger status/control, software-reset request, and bench help.
 - The PDU firmware exposes low-level PDU control/status. The Teensy/EPS adapter
   is expected to combine this with board telemetry for the F Prime EPS view.

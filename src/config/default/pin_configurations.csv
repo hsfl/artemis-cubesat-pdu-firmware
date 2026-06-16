@@ -57,7 +57,7 @@ Pin Number,Pin ID,Custom Name,Function,Mode, Direction,Latch,Pull Up,Pull Down,D
 68,PB20,UART2_TXD,SERCOM3_PAD0,Digital,High Impedance,n/a,No,No,NORMAL
 69,PB21,UART2_RXD,SERCOM3_PAD1,Digital,High Impedance,n/a,No,No,NORMAL
 70,PA20,CHRG,GPIO,Digital,In,n/a,No,No,NORMAL
-71,PA21,LED,GPIO,Digital,In/Out,High,,,NORMAL
+71,PA21,LED,GPIO,Digital,In/Out,Low,,,NORMAL
 72,PA22,,Available,,,,,,NORMAL
 73,PA23,,Available,,,,,,NORMAL
 74,PA24,USB_DM,USB_DM,Digital,High Impedance,n/a,No,No,NORMAL

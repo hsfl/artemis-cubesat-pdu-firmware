@@ -403,6 +403,22 @@ bool parseOnOff(String text, uint8_t &state) {
   return false;
 }
 
+bool parseChargerState(String text, uint8_t &state) {
+  text.toLowerCase();
+
+  if (text == "on" || text == "enable" || text == "enabled" || text == "1") {
+    state = 1;
+    return true;
+  }
+
+  if (text == "off" || text == "disable" || text == "disabled" || text == "0") {
+    state = 0;
+    return true;
+  }
+
+  return false;
+}
+
 bool parseTorqueMode(String text, uint8_t &mode) {
   text.toLowerCase();
 
@@ -454,6 +470,8 @@ void printHelp() {
   Serial.println(F("  cycle <output> <off_ms>"));
   Serial.println(F("  torque <coil 1-4> <coast|forward|reverse|brake> <100|50> [duration_ms]"));
   Serial.println(F("  torque? <coil 1-4>"));
+  Serial.println(F("  charger?"));
+  Serial.println(F("  charger <on|off>"));
   Serial.println(F("  burn <burn1|burn2> <duration_ms> arm"));
   Serial.println(F("  reset-pdu arm"));
   Serial.println();
@@ -510,6 +528,26 @@ void printTorquePayload(const PduFrame &response) {
   Serial.print(response.payload[3] ? F("awake") : F("sleep"));
   Serial.print(F(" fault="));
   Serial.println(response.payload[4] ? F("yes") : F("no"));
+}
+
+void printChargerPayload(const PduFrame &response) {
+  if (response.status != PDU_V2_STATUS_OK) {
+    return;
+  }
+
+  if (response.payloadLen != PDU_V2_CHARGER_STATUS_RESP_LEN) {
+    Serial.println(F("Bad charger payload length."));
+    return;
+  }
+
+  Serial.print(F("charger: "));
+  Serial.println(response.payload[0] ? F("enabled") : F("shutdown"));
+  Serial.print(F("charge indicator: "));
+  Serial.println(response.payload[1] ? F("active") : F("not active"));
+  Serial.print(F("SHDN latch: "));
+  Serial.println(response.payload[2] ? F("high") : F("low"));
+  Serial.print(F("raw CHRG: "));
+  Serial.println(response.payload[3] ? F("high") : F("low"));
 }
 
 void commandDebug(String line) {
@@ -823,6 +861,30 @@ void commandGetTorque(String line) {
   }
 }
 
+void commandGetCharger() {
+  PduFrame response;
+
+  if (requestResponse(PDU_V2_OP_GET_CHARGER_STATUS, nullptr, 0, response)) {
+    printChargerPayload(response);
+  }
+}
+
+void commandSetCharger(String line) {
+  uint8_t state;
+
+  if (!parseChargerState(tokenAt(line, 1), state)) {
+    Serial.println(F("Usage: charger <on|off>"));
+    return;
+  }
+
+  uint8_t payload[] = { state };
+  PduFrame response;
+
+  if (requestResponse(PDU_V2_OP_SET_CHARGER_STATE, payload, sizeof(payload), response)) {
+    printChargerPayload(response);
+  }
+}
+
 void commandSoftwareReset(String line) {
   String armText = tokenAt(line, 1);
   armText.toLowerCase();
@@ -878,6 +940,10 @@ void handleCommand(String line) {
     commandSetTorque(line);
   } else if (command == "torque?") {
     commandGetTorque(line);
+  } else if (command == "charger?") {
+    commandGetCharger();
+  } else if (command == "charger") {
+    commandSetCharger(line);
   } else if (command == "reset-pdu") {
     commandSoftwareReset(line);
   } else {

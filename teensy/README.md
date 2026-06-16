@@ -14,17 +14,21 @@ These sketches are for bench testing the Artemis PDU with a Teensy.
   - Checks the PDU-side analog temperature input and INA219 current sensors.
   - This is not the PDU MCU command protocol. It is a separate board-health test.
 
-Planned next sketches:
-
 - `pdu_all_test/pdu_all_test.ino`
-  - Bench checkout profile for link, protocol info, status, output readback,
-    selected safe rail operations, and torque readback.
-- `pdu_vibe_test/pdu_vibe_test.ino`
-  - Vibration-test setup profile that commands normal outputs off and verifies
-    burn-wire and torque-coil safe states.
+  - Operator-driven full bench checkout profile for link, protocol info,
+    status, output readback, selected safe rail operations, charger status, and
+    torque readback.
+- `pdu_vibration_test/pdu_vibration_test.ino`
+  - Autonomous vibration-test profile that commands outputs off, shuts the
+    charger down, coasts torque coils, and logs periodic PDU status to Teensy SD.
 - `pdu_thermal_test/pdu_thermal_test.ino`
-  - Thermal-vac support profile that polls PDU status and enables only the rails
-    required by the approved thermal test setup.
+  - Autonomous thermal-vac support profile that applies an editable rail policy
+    and logs PDU status plus TMP36/INA219 telemetry to Teensy SD.
+
+- `pdu_test_common/pdu_test_common.h`
+  - Shared framed-UART client used by the profile sketches. It includes
+    `src/pdu_protocol_v2.h` directly so active protocol constants stay in the
+    firmware repo source of truth.
 
 Keep these as Teensy-side profiles rather than PDU firmware modes. The PDU
 firmware should remain a low-level EPS controller with explicit commands and
@@ -64,6 +68,9 @@ set 5v1 off
 cycle 5v1 500
 torque 1 forward 100 250
 torque? 1
+charger?
+charger on
+charger off
 burn burn1 1000 arm
 reset-pdu arm
 ```
@@ -71,17 +78,29 @@ reset-pdu arm
 Burn-wire and reset commands require the literal `arm` word so they cannot be
 triggered by a casual typo during bench testing.
 
+## Profile Sketches
+
+Use `pdu_all_test` for local bench work where a person can type commands and
+measure rails. Start with `run`, then use `set <output> <on|off>`, `cycle`,
+`summary`, `reset-info`, `charger?`, `charger <on|off>`, and guarded torque
+commands as needed.
+
+Use `pdu_vibration_test` when no one will have console access. On boot it forces
+outputs off, charger shutdown, and torque coils coast/off. It creates
+`VIBE00.CSV`, `VIBE01.CSV`, etc. on the Teensy SD card when available and still
+mirrors logs to USB Serial if connected.
+
+Use `pdu_thermal_test` for thermal-vac support. Edit `THERMAL_OUTPUT_PLAN` and
+`THERMAL_ENABLE_CHARGER` in the sketch before the run. It creates `TVAC00.CSV`,
+`TVAC01.CSV`, etc. and logs PDU summary/output/charger state plus TMP36 and
+INA219 sensor readings.
+
 ## Charger Scope
 
-Do not add charger commands to the Teensy tester yet. The hardware manual names
-`SHDN` and `CHRG`, but this repo's generated MPLAB/Harmony pin configuration
-does not currently expose confirmed named MCU pins for those signals. Charger
-test support should wait until that pin mapping is verified and generated
-configuration is updated deliberately.
-
-When charger support is added, use the LTC4012 datasheet polarity: `SHDN` high
-enables the charger, `SHDN` low shuts it down, and `CHRG` is an active-low
-open-drain charge indicator.
+The comms sketch supports `charger?` and `charger <on|off>`. Use the LTC4012
+datasheet polarity: `SHDN` high enables the charger, `SHDN` low shuts it down,
+and `CHRG` is an active-low open-drain charge indicator. `charger?` reports the
+`SHDN` output latch and raw `CHRG` input state.
 
 ## Flight-Software Direction
 

@@ -41,7 +41,7 @@ The important handwritten files are:
 
 - `src/app.c`
   - applies safe startup GPIO defaults through `disableAllGPIOs()`
-  - sets the status LED
+  - leaves the SK6812 LED/DIN line idle-low
   - polls SERCOM3 UART in bounded byte batches
   - resets parser state on UART read/error failure
 - `src/pdu_packet.c`
@@ -89,8 +89,15 @@ That helper is the shared all-off path used by boot and protocol-level safe
 defaults. It clears rail, burn, and H-bridge control pins, including
 `BURN1_EN` and `BURN_5V`.
 
-After GPIO defaults are applied, the firmware sets the status LED. RTC and
-other generated peripherals are initialized by `SYS_Initialize()` before
+After GPIO defaults are applied, the firmware keeps the `LED` net low. The
+installed PCB part is an SK6812 smart RGB LED, so PA21 drives the LED's `DIN`
+input rather than a simple LED anode/cathode. A static high level does not turn
+the LED on; it needs a timing-specific SK6812/NeoPixel data frame. Because the
+PCB is already locked and the indicator is not worth the added maintenance cost,
+the firmware intentionally leaves this line idle-low and does not implement an
+SK6812 driver.
+
+RTC and other generated peripherals are initialized by `SYS_Initialize()` before
 `APP_Initialize()` runs.
 
 The application task then continuously polls the command UART.
@@ -149,6 +156,8 @@ The current firmware implements:
 - `FIRE_BURN_WIRE`
 - `SET_TORQUE_COIL`
 - `GET_TORQUE_COIL`
+- `GET_CHARGER_STATUS`
+- `SET_CHARGER_STATE`
 - `SOFTWARE_RESET`
 
 `GET_OUTPUT_STATE` supports `PDU_OUTPUT_ALL` for all-output readback.
@@ -179,18 +188,19 @@ on-board modes. Those are bench/test intents and should live as separate
 Teensy-side test sketches so the operator can inspect each step and avoid
 one-command broad state changes in flight firmware.
 
-Battery-charger commands are also intentionally absent for now. The manual
-describes `SHDN` and `CHRG`, but this checkout does not currently expose named
-`SHDN` or `CHRG` pins in the generated MPLAB/Harmony pin configuration. Add
-charger opcodes only after the pins are confirmed and the generated config is
-updated deliberately in MPLAB X. The expected assignments are physical pin 36
-`PB14` as `SHDN` and physical pin 70 `PA20` as `CHRG`.
+Battery-charger commands use the generated physical pin 36 `PB14` as `SHDN` and
+physical pin 70 `PA20` as `CHRG`.
 
 Per the LTC4012 datasheet, `SHDN` is active-low shutdown: `SHDN_Clear()` should
 mean charger disabled/shutdown, and `SHDN_Set()` should mean charger enabled.
 `CHRG` is an active-low open-drain charge indicator, so a low read means the
 charge indicator is active, subject to the board pull-up and weak-pulldown
 behavior.
+
+`GET_CHARGER_STATUS` reads interpreted charger state, the `SHDN` output latch,
+and the raw `CHRG` input state.
+`SET_CHARGER_STATE` accepts `1=enable` or `0=shutdown`, drives `SHDN`, then
+returns the same status payload as `GET_CHARGER_STATUS`.
 
 ## Logical Outputs
 
@@ -221,6 +231,11 @@ of board-pin choreography.
 `GET_SUMMARY_STATUS` reports live H-bridge fault indications in its fault
 bitmap. The current implementation treats the DRV8847-style fault lines as
 active-low inputs.
+
+`FAULT1` and `FAULT2` must stay configured as inputs in MCC. They are status
+outputs from the DRV8847 H-bridge devices, not MCU control pins. Configuring
+them as outputs would risk driving against the H-bridge fault output and could
+mask or create invalid fault readings.
 
 Torque-coil mapping:
 - coil 1: `IN1/IN2`, U1 bridge 1/2
@@ -268,25 +283,24 @@ Generated Harmony SD/FATFS configuration remains available for future work.
 Generated SERCOM4 I2C slave configuration also remains available for future
 work, but the handwritten app no longer initializes or uses it directly.
 
-## Planned Teensy Test Sketch Split
+## Teensy Test Sketch Split
 
-Keep operational test modes out of the PDU firmware. The next bench-test work
-should create separate Teensy sketches:
+Keep operational test modes out of the PDU firmware. `ALL`, `VIBE`/vibration,
+and `THERMAL` are implemented as separate Teensy-side sketches:
 
 - `teensy/pdu_all_test/pdu_all_test.ino`
   - full bench checkout of UART link, protocol info, summary status, selected
     rail set/get, power-cycle behavior, torque-coil readback, and safe reset
     info
   - no automatic burn-wire firing with deployment hardware connected
-- `teensy/pdu_vibe_test/pdu_vibe_test.ino`
-  - vibration-test profile that commands all normal controllable outputs off
-    and verifies output readback before hardware handling
-  - keeps burn-wire channels off and avoids torque-coil actuation
+- `teensy/pdu_vibration_test/pdu_vibration_test.ino`
+  - autonomous vibration-test profile that commands outputs off, shuts charger
+    down, coasts torque coils, and logs periodic PDU status to Teensy SD
 - `teensy/pdu_thermal_test/pdu_thermal_test.ino`
-  - thermal-vac profile that keeps PDU MCU/watchdog/status polling alive and
-    enables only the rails required by the approved test setup
-  - pairs with direct Teensy sensor checkout for temperature and INA219 data
+  - autonomous thermal-vac profile that applies an editable rail/charger policy
+    and logs PDU status plus TMP36/INA219 data to Teensy SD
+- `teensy/pdu_test_common/pdu_test_common.h`
+  - shared framed UART helper used by the profile sketches
 
-These sketches should reuse the framed protocol helpers from
-`teensy/pdu_comms_test/pdu_comms_test.ino` and the direct sensor approach from
-`teensy/pdu_board_sensor_test/pdu_board_sensor_test.ino`.
+The autonomous sketches also mirror logs to USB Serial when connected, but they
+do not wait for a serial console at boot.

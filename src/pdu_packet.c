@@ -96,6 +96,10 @@ static void pdu_fill_all_output_states(uint8_t *states);
 static uint16_t pdu_get_output_bitmap(void);
 static uint8_t pdu_get_fault_bitmap(void);
 static uint8_t pdu_get_reset_cause(void);
+static uint8_t pdu_get_charger_enabled(void);
+static uint8_t pdu_get_charge_indicator_active(void);
+static void pdu_set_charger_enabled(uint8_t enabled);
+static void pdu_fill_charger_response(uint8_t *responsePayload);
 static void pdu_update_uptime(void);
 static uint32_t pdu_get_uptime_seconds(void);
 static uint8_t pdu_get_capabilities(void);
@@ -662,6 +666,36 @@ static uint8_t pdu_get_reset_cause(void)
     return RSTC_REGS->RSTC_RCAUSE;
 }
 
+static uint8_t pdu_get_charger_enabled(void)
+{
+    return PORT_PinLatchRead(SHDN_PIN) ? 1U : 0U;
+}
+
+static uint8_t pdu_get_charge_indicator_active(void)
+{
+    return PORT_PinRead(CHRG_PIN) ? 0U : 1U;
+}
+
+static void pdu_set_charger_enabled(uint8_t enabled)
+{
+    if (enabled != 0U)
+    {
+        SHDN_Set();
+    }
+    else
+    {
+        SHDN_Clear();
+    }
+}
+
+static void pdu_fill_charger_response(uint8_t *responsePayload)
+{
+    responsePayload[0] = pdu_get_charger_enabled();
+    responsePayload[1] = pdu_get_charge_indicator_active();
+    responsePayload[2] = (uint8_t)PORT_PinLatchRead(SHDN_PIN);
+    responsePayload[3] = (uint8_t)PORT_PinRead(CHRG_PIN);
+}
+
 static void pdu_update_uptime(void)
 {
     TickType_t currentTick = xTaskGetTickCount();
@@ -823,7 +857,7 @@ static void pdu_handle_request(uint8_t opcode, uint8_t seq, const uint8_t *paylo
 
         {
             static const char helpPayload[] =
-                VERSION_STRING " cmds:PING,INFO,SUMMARY,RESET_INFO,HELP,GET,SET,CYCLE,BURN,TRQ_SET,TRQ_GET,SW_RESET";
+                VERSION_STRING " cmds:PING,INFO,SUM,RI,HELP,GET,SET,CYC,BURN,TRQ,TRQ?,CHG,CHG?,RST";
             pdu_send_response(seq, opcode, PDU_V2_STATUS_OK, (const uint8_t *)helpPayload, (uint8_t)(sizeof(helpPayload) - 1U));
         }
         return;
@@ -1050,6 +1084,35 @@ static void pdu_handle_request(uint8_t opcode, uint8_t seq, const uint8_t *paylo
         pdu_send_response(seq, opcode, PDU_V2_STATUS_OK, responsePayload, PDU_V2_TORQUE_COIL_RESP_LEN);
         return;
 
+    case PDU_V2_OP_GET_CHARGER_STATUS:
+        if (payload_len != 0U)
+        {
+            pdu_send_response(seq, opcode, PDU_V2_STATUS_BAD_LENGTH, NULL, 0U);
+            return;
+        }
+
+        pdu_fill_charger_response(responsePayload);
+        pdu_send_response(seq, opcode, PDU_V2_STATUS_OK, responsePayload, PDU_V2_CHARGER_STATUS_RESP_LEN);
+        return;
+
+    case PDU_V2_OP_SET_CHARGER_STATE:
+        if (payload_len != PDU_V2_SET_CHARGER_STATE_REQ_LEN)
+        {
+            pdu_send_response(seq, opcode, PDU_V2_STATUS_BAD_LENGTH, NULL, 0U);
+            return;
+        }
+
+        if ((payload[0] != 0U) && (payload[0] != 1U))
+        {
+            pdu_send_response(seq, opcode, PDU_V2_STATUS_BAD_PARAM, NULL, 0U);
+            return;
+        }
+
+        pdu_set_charger_enabled(payload[0]);
+        pdu_fill_charger_response(responsePayload);
+        pdu_send_response(seq, opcode, PDU_V2_STATUS_OK, responsePayload, PDU_V2_CHARGER_STATUS_RESP_LEN);
+        return;
+
     case PDU_V2_OP_SOFTWARE_RESET:
         if (payload_len != 0U)
         {
@@ -1166,6 +1229,8 @@ void pdu_protocol_process_byte(uint8_t byte)
 
 void disableAllGPIOs(void)
 {
+    SHDN_Clear();
+    CHRG_InputEnable();
     BURN2_EN_Clear();
     BURN1_EN_Clear();
     BURN_5V_Clear();

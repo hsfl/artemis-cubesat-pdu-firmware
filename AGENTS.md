@@ -8,7 +8,7 @@ This repository contains Artemis CubeSat PDU firmware for a Microchip ATSAME51 M
 
 - `src/main.c`: Harmony entry point. Calls `SYS_Initialize(NULL)`, optionally prints the firmware version, then loops on `SYS_Tasks()`.
 - `src/config/default/tasks.c`: Creates the FreeRTOS tasks for `SYS_FS`, `DRV_SDSPI`, the watchdog, and `APP_Tasks`, then starts the scheduler.
-- `src/app.c` / `src/app.h`: Main handwritten application logic. Applies safe startup GPIO defaults, sets the status LED, and polls UART. `APP_Tasks()` currently only polls `USART_READ()`.
+- `src/app.c` / `src/app.h`: Main handwritten application logic. Applies safe startup GPIO defaults, keeps the SK6812 LED/DIN line idle-low, and polls UART. `APP_Tasks()` currently only polls `USART_READ()`.
 - `src/pdu_packet.c` / `src/pdu_packet.h`: Active framed protocol parser/encoder and GPIO state control for output commands and telemetry.
 - `src/pdu_protocol_v2.h`: Shared in-repo protocol definition for framed UART communication. Firmware and the Teensy comms tester include this same header.
 - `src/config/default/`: Harmony-generated configuration, peripheral drivers, system services, and `definitions.h`.
@@ -34,7 +34,7 @@ This repository contains Artemis CubeSat PDU firmware for a Microchip ATSAME51 M
 
 - Runtime path:
   - `src/main.c` -> `SYS_Tasks()` -> `lAPP_Tasks()` -> `APP_Tasks()` -> `USART_READ()` -> `pdu_protocol_process_byte()`
-- `APP_Initialize()` calls `disableAllGPIOs()` on boot, then sets the LED.
+- `APP_Initialize()` calls `disableAllGPIOs()` on boot, then keeps the SK6812 LED/DIN line low.
 - `APP_Tasks()` polls UART once per app-task iteration; `lAPP_Tasks()` adds a 1 ms FreeRTOS delay between iterations.
 - `USART_READ()` feeds bytes into the framed protocol parser in `src/pdu_packet.c`.
 - Legacy text-command and app-level SD-card demo helpers were removed from `src/app.c`; generated Harmony SD/FATFS support remains configured for future use.

@@ -11,7 +11,7 @@
     This file contains the active PDU application loop.
 
   Description:
-    This file applies startup defaults, sets the status LED, and polls UART
+    This file applies startup defaults and polls UART
     bytes for the framed PDU protocol.
  *******************************************************************************/
 
@@ -67,7 +67,12 @@ static void USART_READ(void);
 void APP_Initialize(void)
 {
     disableAllGPIOs();
-    LED_Set();
+    /*
+     * The PCB LED is an SK6812 smart RGB LED. PA21 is its DIN line, not a
+     * direct LED anode/cathode drive. Keep DIN idle-low unless a real SK6812
+     * driver is added.
+     */
+    LED_Clear();
 }
 
 /******************************************************************************

@@ -84,6 +84,18 @@ JTAG/SWD connector:
 
 The PDU MCU is programmed/debugged through SWD/JTAG-style lines.
 
+### Status LED
+
+The installed `LED` part is an SK6812 smart RGB LED powered from `BUS_3V3`.
+Its `DIN` input is routed to MCU pin `PA21` through the `LED` net, while `DOUT`
+is unused.
+
+This is not a direct GPIO LED. Holding `PA21` high does not turn the part on;
+the SK6812 requires a timing-specific serial color frame before it will latch a
+visible color. Since the PCB is already locked and this indicator is not worth
+the timing-driver maintenance burden, firmware keeps the `LED`/`DIN` line
+idle-low and intentionally leaves the SK6812 unused.
+
 ### USB-C
 
 The USB-C receptacle carries:
@@ -228,6 +240,15 @@ Firmware policy:
 - H-bridge fault lines are inputs, not outputs
 - live fault bits are reported through summary status
 
+Fault-pin direction matters:
+
+- `FAULT1` / `PA17` is driven by H-bridge U1 and reports faults for coils 1-2.
+- `FAULT2` / `PA16` is driven by H-bridge U2 and reports faults for coils 3-4.
+- Both pins must be configured as GPIO inputs. If firmware configures them as
+  outputs, the MCU can fight the DRV8847 fault output, mask a real fault, or
+  force a false logic level.
+- Firmware treats these lines as active-low fault indicators in summary status.
+
 ## Sensors
 
 ### Temperature Sensors
@@ -278,19 +299,33 @@ LTC4012 datasheet behavior:
   states, firmware should document any board-level pull-up behavior before
   treating one GPIO read as detailed charge-state telemetry.
 
-Charger command/state abstraction is not currently implemented in the v2
-protocol. Do not add charger opcodes until the actual `SHDN` and `CHRG` MCU
-pins are confirmed in MPLAB/Harmony pin configuration and generated port macros.
-The current `src/config/default/pin_configurations.csv` does not expose named
-`SHDN` or `CHRG` GPIOs, so implementing this now would require a deliberate
-MPLAB configuration update.
+Charger command/state abstraction is implemented in the v2 protocol through
+`GET_CHARGER_STATUS` and `SET_CHARGER_STATE`.
 
-Planned MPLAB pin assignments after schematic/config confirmation:
+Current MPLAB pin assignments:
 
 - physical pin 36 / `PB14`: `SHDN`, GPIO output, initial latch low for safe
   default charger shutdown
 - physical pin 70 / `PA20`: `CHRG`, GPIO input, pull-up only if the board does
   not already provide the required pull-up
+
+## Firmware Pin Direction Notes
+
+These generated pin directions are intentional and should be preserved during
+MPLAB/Harmony regeneration:
+
+| Signal | MCU pin | Direction | Why |
+|--------|---------|-----------|-----|
+| `SHDN` | `PB14` | Output | MCU commands the LTC4012 charger shutdown input. Low is safe default shutdown; high enables charger. |
+| `CHRG` | `PA20` | Input | LTC4012 reports charge status to MCU through an active-low open-drain indicator. |
+| `FAULT1` | `PA17` | Input | DRV8847 U1 reports H-bridge faults for coils 1-2; MCU must only read it. |
+| `FAULT2` | `PA16` | Input | DRV8847 U2 reports H-bridge faults for coils 3-4; MCU must only read it. |
+| `SLEEP1` | `PC10` | Output | MCU wakes/sleeps H-bridge U1 for torque-coil control. |
+| `SLEEP2` | `PA18` | Output | MCU wakes/sleeps H-bridge U2 for torque-coil control. |
+| `IN1..IN8` | see pin CSV | Output | MCU drives DRV8847 input pairs to command coil direction/mode. |
+| `TRQ1` / `TRQ2` | `PC13` / `PC17` | Output | MCU selects DRV8847 current scalar for each H-bridge device. |
+| `BURN1_EN` / `BURN2_EN` | `PB31` / `PA15` | Output | MCU gates the two burn-wire channels. |
+| `BURN_5V` | `PB15` | Output | MCU enables the shared burn-wire source. |
 
 ## Safety Circuits
 
@@ -317,6 +352,4 @@ Hardware exists, but these features are not fully exposed by current firmware:
 - MicroSD logging/config/file handling
 - full temperature telemetry command path
 - INA219 telemetry command path
-- charger control/status command path; blocked until `SHDN` and `CHRG` pins
-  are confirmed in generated MPLAB/Harmony config
 - latched fault history beyond live H-bridge fault bits

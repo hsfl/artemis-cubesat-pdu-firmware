@@ -14,12 +14,11 @@ Use:
 - `teensy/pdu_comms_test/pdu_comms_test.ino` for PDU MCU UART protocol testing
 - `teensy/pdu_board_sensor_test/pdu_board_sensor_test.ino` for direct sensor
   line checkout
-
-Planned next sketches:
-
 - `teensy/pdu_all_test/pdu_all_test.ino` for full bench checkout
-- `teensy/pdu_vibe_test/pdu_vibe_test.ino` for vibration-test safe-state setup
+- `teensy/pdu_vibration_test/pdu_vibration_test.ino` for autonomous
+  vibration-test safe-state setup and SD logging
 - `teensy/pdu_thermal_test/pdu_thermal_test.ino` for thermal-vac support
+- `teensy/pdu_test_common/pdu_test_common.h` for shared framed-UART helpers
 
 ## PDU Comms Test
 
@@ -73,6 +72,8 @@ set <output> <on|off>
 cycle <output> <off_ms>
 torque <coil 1-4> <coast|forward|reverse|brake> <100|50> [duration_ms]
 torque? <coil 1-4>
+charger?
+charger <on|off>
 burn <burn1|burn2> <duration_ms> arm
 reset-pdu arm
 ```
@@ -156,17 +157,23 @@ The sketch prints:
 This sensor sketch does not talk to the PDU MCU. It is a direct electrical
 checkout tool.
 
-## Planned Test Profiles
+## Test Profiles
 
 The PDF ICD's `ALL`, `VIBE`, and `THERMAL` entries are test intents, not current
-PDU firmware modes. Implement them as separate Teensy sketches so each profile
-can be reviewed, changed, and run independently.
+PDU firmware modes. They are separate Teensy sketches so each profile can be
+reviewed, changed, and run independently.
 
 ### `pdu_all_test`
 
 Purpose: full bench checkout before deeper subsystem testing.
 
-Expected behavior:
+Sketch:
+
+```text
+teensy/pdu_all_test/pdu_all_test.ino
+```
+
+Behavior:
 
 - open the PDU UART at `9600`
 - run `PING`, `GET_PROTOCOL_INFO`, `GET_SUMMARY_STATUS`, and `GET_RESET_INFO`
@@ -177,42 +184,93 @@ Expected behavior:
   when the operator enables it in the sketch
 - do not auto-fire burn wires
 
-### `pdu_vibe_test`
+Primary commands:
+
+```text
+run
+ping
+info
+summary
+reset-info
+get all
+set <output> <on|off>
+cycle <output> <off_ms>
+all-off
+charger?
+charger <on|off>
+torque? <coil 1-4>
+arm-torque <on|off>
+torque-pulse <coil 1-4> <forward|reverse> <100|50> <ms>
+```
+
+### `pdu_vibration_test`
 
 Purpose: put the PDU into a conservative vibration-test state.
 
-Expected behavior:
+Sketch:
 
-- verify UART link and firmware info
-- command all normal controllable outputs off one by one
-- verify all-output readback
+```text
+teensy/pdu_vibration_test/pdu_vibration_test.ino
+```
+
+Behavior:
+
+- boot without waiting for USB Serial
+- command all exposed outputs off one by one
+- shut charger down through `SHDN`
 - keep burn-wire channels off
 - keep torque coils coast/off
-- avoid charger commands until `SHDN` and `CHRG` pins are confirmed in
-  MPLAB/Harmony config
+- poll summary, output state, charger state, and torque-coil state every 5 s
+- reassert the conservative safe state every 60 s
+- write `VIBE00.CSV`, `VIBE01.CSV`, etc. to Teensy SD when available
+- mirror logs to USB Serial when connected
+
+If the SD card cannot initialize, the sketch keeps running and uses USB Serial
+only. That is useful for bench debugging but not enough for an unattended vibe
+run.
 
 ### `pdu_thermal_test`
 
 Purpose: support thermal-vac testing without adding a firmware thermal mode.
 
-Expected behavior:
+Sketch:
 
-- verify UART link and firmware info
-- poll summary status and reset info during the run
-- enable only the rails explicitly required by the approved test setup
+```text
+teensy/pdu_thermal_test/pdu_thermal_test.ino
+```
+
+Behavior:
+
+- boot without waiting for USB Serial
+- apply the editable `THERMAL_OUTPUT_PLAN`
+- apply `THERMAL_ENABLE_CHARGER`
+- keep torque coils coast/off
+- poll summary, output state, charger state, TMP36 temperature, and INA219
+  voltage/current/power every 10 s
+- reassert the configured policy every 60 s
+- write `TVAC00.CSV`, `TVAC01.CSV`, etc. to Teensy SD when available
 - keep watchdog servicing active through normal firmware operation
-- use `pdu_board_sensor_test` or its sensor helpers for temperature and INA219
-  telemetry because those lines are OBC/Teensy-facing in the manual context
+
+Before thermal-vac, edit these constants in the sketch:
+
+```cpp
+OutputPlan THERMAL_OUTPUT_PLAN[] = { ... };
+const bool THERMAL_ENABLE_CHARGER = false;
+```
+
+The default thermal policy is intentionally conservative: all outputs off and
+charger disabled. Do not leave it at defaults if the approved thermal-vac setup
+requires powered rails.
 
 ## Charger Scope
 
-Do not add Teensy commands for PDU charger enable/status yet. The manual names
-`SHDN` and `CHRG`, but this checkout does not currently expose confirmed named
-PDU MCU pins for those signals in `src/config/default/pin_configurations.csv`
-or generated port macros. Charger support should wait until the schematic/pin
-mapping is verified and the MPLAB/Harmony configuration is updated deliberately.
+The comms sketch exposes:
 
-When charger support is added, follow the LTC4012 datasheet polarity:
+- `charger?`: read charger enabled state, active-low charge indicator, `SHDN`
+  output latch, and raw `CHRG`
+- `charger <on|off>`: enable or shut down the LTC4012 charger through `SHDN`
+
+Follow the LTC4012 datasheet polarity:
 
 - `SHDN` high = charger enabled/allowed to run
 - `SHDN` low = charger shutdown/disabled

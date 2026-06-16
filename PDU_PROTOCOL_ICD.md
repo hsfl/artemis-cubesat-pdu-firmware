@@ -366,6 +366,43 @@ Request payload:
 Response payload:
 - same shape as `SET_TORQUE_COIL`
 
+### `0x16 GET_CHARGER_STATUS`
+
+Request payload:
+- none
+
+Response payload:
+
+| Byte | Field |
+|------|-------|
+| 0 | charger enabled state, `1=enabled`, `0=shutdown` |
+| 1 | charge indicator active, `1=CHRG asserted low`, `0=not asserted` |
+| 2 | `SHDN` output latch level |
+| 3 | raw `CHRG` pin level |
+
+LTC4012 polarity:
+- `SHDN` high enables/allows charger operation
+- `SHDN` low shuts the charger down
+- `CHRG` is active-low/open-drain
+
+The digital `CHRG` readback reports whether the indicator is low or high. Board
+pull-up behavior and the LTC4012 weak-pulldown/high-Z states should be considered
+before treating this as detailed charger state telemetry.
+
+### `0x17 SET_CHARGER_STATE`
+
+Request payload:
+
+| Byte | Field |
+|------|-------|
+| 0 | desired charger state, `1=enable`, `0=shutdown` |
+
+Response payload:
+- same shape as `GET_CHARGER_STATUS`
+
+This command controls only the LTC4012 `SHDN` input. It does not validate solar
+input, battery temperature, or battery charge current.
+
 ### `0x20 SOFTWARE_RESET`
 
 Request payload:
@@ -394,22 +431,15 @@ The current firmware implements:
 - nonblocking single-output power cycle
 - timed burn-wire fire command
 - low-level torque-coil set/read interface for external ADCS control
+- charger enable/status control through `SHDN` and `CHRG`
 - software reset through watchdog stall
 
 The current firmware does not yet implement:
 - asynchronous event frames
-- charger control/state
 - Pi-specific power/reset supervision commands beyond the PDU watchdog reset
 - latched-fault reporting beyond live H-bridge fault bits
 - heater abstractions separate from burn-wire channels
 - all-output enable command
-
-Charger support is intentionally deferred until `SHDN` and `CHRG` are confirmed
-in the MPLAB/Harmony pin configuration and generated port macros. Do not assign
-wire opcodes for charger control/status until that hardware mapping is verified.
-When implemented, use the LTC4012 datasheet polarity: `SHDN` high enables the
-charger, `SHDN` low shuts it down, and `CHRG` is an active-low open-drain charge
-indicator.
 
 Bench profiles such as `ALL`, `VIBE`, and `THERMAL` should be implemented as
 separate Teensy-side test sketches, not as PDU firmware opcodes.
@@ -498,4 +528,6 @@ Response payload:
   3. `SET_OUTPUT_STATE`
   4. `GET_OUTPUT_STATE`
   5. `POWER_CYCLE_OUTPUT`
-  6. `FIRE_BURN_WIRE`, only after deployment safety policy is agreed
+  6. `GET_CHARGER_STATUS`
+  7. `SET_CHARGER_STATE`
+  8. `FIRE_BURN_WIRE`, only after deployment safety policy is agreed

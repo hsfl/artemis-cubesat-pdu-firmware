@@ -66,6 +66,8 @@ Current commands:
 | `FIRE_BURN_WIRE` | Fire one burn-wire channel for a bounded duration |
 | `SET_TORQUE_COIL` | Set one torque coil mode/current, optionally timed |
 | `GET_TORQUE_COIL` | Read one torque coil state |
+| `GET_CHARGER_STATUS` | Read charger enable and active-low charge indicator state |
+| `SET_CHARGER_STATE` | Enable or shut down the LTC4012 charger through `SHDN` |
 | `SOFTWARE_RESET` | Reply OK, then intentionally stop watchdog service |
 
 ## Repository Map
@@ -125,6 +127,7 @@ Implemented now:
 - bounded power-cycle operations
 - bounded burn-wire operations
 - low-level torque-coil control/readback
+- charger enable/status control
 - reset-cause and summary status reporting
 - uptime based on FreeRTOS scheduler ticks
 - parser recovery for truncated frames
@@ -134,7 +137,6 @@ Not implemented in this firmware:
 - native USB/CDC command interface
 - MicroSD logging or file operations
 - full analog power, current, and temperature telemetry
-- charger control/status abstraction
 - asynchronous event frames
 
 Those higher-level EPS telemetry and mission behaviors should be handled by the
