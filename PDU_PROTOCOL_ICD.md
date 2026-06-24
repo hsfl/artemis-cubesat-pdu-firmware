@@ -513,9 +513,9 @@ Response payload:
 
 ## Implementation References
 
-- Protocol constants: [src/pdu_protocol_v2.h](/Users/sozodennis/Developer/artemis-cubesat-pdu-firmware/src/pdu_protocol_v2.h:1)
-- Parser and handlers: [src/pdu_packet.c](/Users/sozodennis/Developer/artemis-cubesat-pdu-firmware/src/pdu_packet.c:1)
-- UART byte ingress path: [src/app.c](/Users/sozodennis/Developer/artemis-cubesat-pdu-firmware/src/app.c:153)
+- Protocol constants: `src/pdu_protocol_v2.h`
+- Parser and handlers: `src/pdu_packet.c`
+- UART byte ingress path: `src/app.c`
 
 ## Migration Guidance For The Controller Side
 
